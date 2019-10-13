@@ -2,7 +2,11 @@
 # Date: 10/12/19
 # 
 # This is a test of the Keras system playing with Malmo
-# Problem: A blue tile is placed in an otherwise uniformly 
+# Problem: A blue tile is placed in an otherwise uniformly stone play area,
+#   surrounded by a lava boundary. Goal is to reach the blue tile.
+# Architecture: 16-node hidden layer fully-connected NN, Q-Learner
+# Training strategy: Reinforcement Learning using batches of recent history
+#   epsilon-greedy exploration with exponential decay on epsilon
 
 from keras.models import Sequential
 from keras.layers import Dense, InputLayer, Flatten
@@ -16,6 +20,12 @@ import time
 import sys
 import os
 import json
+
+if sys.version_info[0] == 2:
+    # Workaround for https://github.com/PythonCharmers/python-future/issues/262
+    import Tkinter as tk
+else:
+    import tkinter as tk
 
 if sys.version_info[0] == 2:
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)  # flush print output immediately
@@ -105,7 +115,7 @@ if agent_host.receivedArgument("help"):
 
 class RLearner:
     def __init__(self):
-        self._name = '3x3_grid_q_learner_v2.1'
+        self._name = '3x3_grid_q_learner_v2.2'
         self._model = Sequential([
             # Take in a 3x3 grid of one-hot encoded blocks for the floor
             InputLayer(input_shape=(*(INPUT_SHAPE),len(BLOCKS))),
@@ -117,8 +127,8 @@ class RLearner:
         self._model.compile(loss='mse', optimizer='adam', metrics=['mae'])
         self.start_epoch = 0
         self._model,self.start_epoch = std_load(self._name, self._model)
-        self._epsilon_decay = 0.9999
-        self._epsilon = 0.50 * (self._epsilon_decay**(self.start_epoch + 1))
+        self._epsilon_decay = 0.9995
+        self._epsilon = 0.80 * (self._epsilon_decay**(self.start_epoch + 1))
         self._discount = 0.95
         self._history = []
         self._sample_size = 32
@@ -166,6 +176,84 @@ class RLearner:
 
     def save(self, id=None):
         self._model.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
+
+    def predict(self, observation):
+        '''Runs the model on observation without saving to history or changing model weights.'''
+        one_hot_obs = to_categorical( np.array(
+                [BLOCK_CODING.get(s, BLOCK_CODING['lava']) for s in observation]
+            ).reshape(1, 3, 3), len(BLOCKS) )
+        raw_pred = self._model.predict(one_hot_obs)[0]
+        return dict(zip(ACTIONS, raw_pred))
+
+class tkDisplay:
+    def __init__(self, model):
+        self._model = model
+        self._scale = 40
+        # TODO: pull this from Malmo, don't generate it by hand
+        #   Alternatively, generate this and generate Malmo's world from it.
+        self._world_model = [
+            ['lava','lava','lava','lava','lava','lava','lava'],
+            ['lava','lava','lava','lapis_block','lava','lava','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','stone','stone','stone','stone','stone','lava'],
+            ['lava','lava','lava','lava','lava','lava','lava']
+        ]
+        self._block_color = {
+            'stone': '#000',
+            'lava' : '#620',
+            'lapis_block': '#006'
+        }
+        self._action_translation = {
+            'movenorth 1': (0,-1),
+            'movesouth 1': (0, 1),
+            'moveeast 1' : ( 1,0),
+            'movewest 1' : (-1,0),
+        }
+
+        self._root = tk.Tk()
+        self._root.wm_title("Q Estimates")
+        self._canvas = tk.Canvas(self._root,
+            width  = self._scale * len(self._world_model[0]),
+            height = self._scale * len(self._world_model),
+            borderwidth        = 0,
+            highlightthickness = 0,
+            bg = "black"
+            )
+        self._canvas.grid()
+        self._root.update()
+
+    def update(self):
+        self._canvas.delete('all')
+        for y,row in enumerate(self._world_model):
+            for x,block in enumerate(row):
+                self._canvas.create_rectangle( x*self._scale, y*self._scale, (x+1)*self._scale, (y+1)*self._scale, outline="#fff", fill=self._block_color[block])
+        # Overlay q-estimates, as different thickness partial lines
+        for y in range(len(self._world_model)):
+            for x in range(len(self._world_model[y])):
+                if self._world_model[y][x] == 'lava':
+                    continue
+                observation = [self._world_model[j][i] for j in range(y-1, y+2) for i in range(x-1, x+2)]
+                q_values    = self._model.predict(observation)
+                total_q = sum(q_values.values())
+                for action,q in q_values.items():
+                    action_x,action_y = self._action_translation[action]
+                    self._canvas.create_line(
+                        (x + 0.5 + 0.2*action_x)*self._scale,
+                        (y + 0.5 + 0.2*action_y)*self._scale,
+                        (x + 0.5 + 0.5*action_x)*self._scale,
+                        (y + 0.5 + 0.5*action_y)*self._scale,
+                        fill="#3A0",
+                        width=10*q/total_q
+                        )
+        self._root.update()
 
 
 def run_mission(model):
@@ -223,12 +311,15 @@ def run_mission(model):
 
     return total_reward
 
-def train_model(model, epochs, initial_epoch=0):
+def train_model(model, epochs, initial_epoch=0, display=None):
     best_reward = None
     for epoch_num in range(initial_epoch, epochs):
         print('Epoch {}/{}'.format(epoch_num, epochs))
+        print('Current Epsilon: {}'.format(model._epsilon))
         reward = run_mission(model)
         print('Total reward:', reward)
+        if display is not None:
+            display.update()
         if best_reward is None or reward > best_reward or epoch_num % 10 == 0:
             model.save('epoch_{:03d}.reward_{:03d}'.format(epoch_num, int(reward)))
         if best_reward is None or reward > best_reward:
@@ -236,6 +327,8 @@ def train_model(model, epochs, initial_epoch=0):
 
 if __name__ == '__main__':
     model = RLearner()
-    train_model(model, 1000, initial_epoch=model.start_epoch)
+    disp  = tkDisplay(model)
+    disp.update()
+    train_model(model, 1000, initial_epoch=model.start_epoch, display=disp)
 
 
