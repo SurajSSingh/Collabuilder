@@ -19,4 +19,4 @@ Our project is a multi agent AI with multiple builders working together to const
 	* Being able to construct any house given a floor plan of varying complexity
 
 ## Appointment
-Thursday October 24, 2:00pm
+Wednesday October 16, 10:10 - 10:30pm
