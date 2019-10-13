@@ -3,14 +3,14 @@ layout: default
 title:  Team
 ---
 
-# {{ page.title }}
+# {{ Team Collabuilder }}
 
 
 ## Aditya Choksi
 ***UCI Net ID***: adchoksi
 
-## USER 2
-***UCI Net ID***: ucinetid2
+## Suraj Singh
+***UCI Net ID***: surajss
 
 ## USER 3
 ***UCI Net ID***: ucinetid3
