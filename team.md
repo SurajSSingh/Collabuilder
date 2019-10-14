@@ -12,5 +12,5 @@ title:  Team
 ## Suraj Singh
 ***UCI Net ID***: surajss
 
-## USER 3
-***UCI Net ID***: ucinetid3
+## David Legg
+***UCI Net ID***: leggd
