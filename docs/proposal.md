@@ -6,6 +6,10 @@ title: Proposal
 ## Summary:
 Our project is a multi agent AI with multiple builders working together to construct a house. We plan to have each individual builder use a neural network trained through reinforcement learning and curriculum learning. We anticipate using the Keras library in order to achive this. The input will be a 3D blueprint of a house, and a 3D map of the relevant portion of the world, both represented by a 3 dimensional array with the appropriate blocks in each cell (the map of the world will include the agent's position). If successful, our agents will work together and build the input blueprint perfectly. Furthermore, if we achieve this goal, we will try and make them faster, and see how they can learn to optimize different building tasks. We plan to do one configuration where the agents are individually trained for separate specialized tasks, and another where there are no specialties, and they may learn to specialize by themselves, or find a more effective solution.
 
+What to do before next report:
+* Generate blueprints
+* Have one agent able to move
+
 ## AI/ML Algorithm
 * Reinforcement-Learning to Train Neural Network
 * A* search (for navigation)
