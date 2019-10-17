@@ -3,6 +3,19 @@
 # The agent is reward for placing a block on this square, and mildly punished for any other action.
 # The idea here is to train an agent how to place a block, as well as to experiment with 
 
+# TODO list:
+#   - Implement observations (2 choices)
+#     - Option 1: Full world observation, with voxel for agent
+#       Need to rotate observation so agent always sees world oriented locally ("forward" is always the same cell in observation)
+#       Need to rotate BLUEPRINT_OH input as well, so it stays in correspondence with world observation
+#     - Option 2: Grid observation, with agent implicitly at center of observation
+#       Still need to rotate observations, I think (double check this), so would still need to rotate BLUEPRINT_OH as well.
+#       Also need to slice BLUEPRINT_OH according to current position, to keep correspondence with world observation.
+#   - Define reward structure:
+#     Keep a copy of last world observation, and look at delta b/w last and this.
+#       Literally, keep the OH-encoded last_obs, then take OH-encoded this_obs - last_obs and look for non-zero elements
+#     If changed block matches blueprint, +10 reward. If changed block doesn't match, -10 reward. If no change, 0 reward.
+
 from keras.models import Sequential
 from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
 from keras.utils import to_categorical
@@ -46,7 +59,9 @@ AGENT_HOST   = None
 INPUTS = ['air', 'stone', 'agent']
 INPUTS_CODING = {b:i for i,b in enumerate(INPUTS)}
 
-ACTIONS = ["movenorth 1", "movesouth 1", "movewest 1", "moveeast 1"]
+# Use = Place block
+# Attack = Mine block
+ACTIONS = ["jumpmove 1", "turn 1", "turn -1", "use", "attack"]
 ACTION_CODING = {s:i for i,s in enumerate(ACTIONS)}
 
 OVERCLOCK_FACTOR = 5
@@ -100,7 +115,10 @@ If training=True, sets overclocking and deactivates rendering.'''
               <AgentSection mode="Survival">
                 <Name>Blockhead</Name>
                 <AgentStart>
-                  <Placement x="0.5" y="2.0" z="0.5" yaw="180"/>
+                  <Placement x="0.5" y="2.0" z="0.5" yaw="180" pitch="70"/>
+                  <Inventory>
+                    <InventoryBlock slot="0" type="stone" quantity="64"/>
+                  </Inventory>
                 </AgentStart>
                 <AgentHandlers>
                   <ObservationFromFullStats/>
@@ -143,9 +161,6 @@ class RLearner:
             # Output one-hot encoded action
             Dense(len(ACTIONS), activation='softmax')
         ])
-        self._model.summary()
-        # DEBUG
-        exit(0)
         self._model.compile(loss='mse', optimizer='adam', metrics=['mae'])
         self.start_epoch = 0
         self._model,self.start_epoch = std_load(self._name, self._model)
@@ -163,7 +178,7 @@ class RLearner:
         # Update model based on last_reward:
 
         one_hot_obs = to_categorical( np.array(
-                [BLOCK_CODING.get(s, BLOCK_CODING['lava']) for s in next_observation]
+                [BLOCK_CODING.get(s, 0) for s in next_observation]
             ).reshape((1, *INPUT_SHAPE)), len(BLOCKS) )
 
         if self._last_pred is not None:
