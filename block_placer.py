@@ -30,6 +30,9 @@ import sys
 import os
 import json
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 if sys.version_info[0] == 2:
     # Workaround for https://github.com/PythonCharmers/python-future/issues/262
     import Tkinter as tk
@@ -71,7 +74,7 @@ def build_world(training=False):
 If training=True, sets overclocking and deactivates rendering.'''
     global BLUEPRINT, BLUEPRINT_OH, MISSION_XML, ACTION_DELAY, AGENT_HOST
 
-    BLUEPRINT = [[['air'] * ARENA_WIDTH] * ARENA_LENGTH] * ARENA_HEIGHT
+    BLUEPRINT = [[['air' for _ in range(ARENA_WIDTH)] for _ in range(ARENA_LENGTH)] for _ in range(ARENA_HEIGHT)]
     BLUEPRINT[0][int(ARENA_LENGTH/2)][int(ARENA_HEIGHT/2)] = 'stone'
     BLUEPRINT = np.array(BLUEPRINT)
 
@@ -117,7 +120,7 @@ If training=True, sets overclocking and deactivates rendering.'''
                 <AgentStart>
                   <Placement x="0.5" y="2.0" z="0.5" yaw="180" pitch="70"/>
                   <Inventory>
-                    <InventoryBlock slot="0" type="stone" quantity="64"/>
+                    <InventoryObject slot="0" type="stone" quantity="64"/>
                   </Inventory>
                 </AgentStart>
                 <AgentHandlers>
@@ -226,6 +229,28 @@ class RLearner:
             ).reshape((1, *INPUT_SHAPE)), len(BLOCKS) )
         raw_pred = self._model.predict(one_hot_obs)[0]
         return dict(zip(ACTIONS, raw_pred))
+
+class tkDisplay:
+    def __init__(self, model):
+        self._model = model
+        self._scale = 40
+        self._block_color = {
+            'stone': '#B0B0C080'
+        }
+
+        self._fig = plt.figure()
+        self._axis = self._fig.add_subplot( 111, projection='3d' )
+
+    def update(self):
+        # Draw the base blueprint
+        new_bp = np.transpose(BLUEPRINT, (1, 2, 0))
+        not_air = new_bp != 'air'
+        colormap = np.full(new_bp.shape, '#00000000')
+        for block,color in self._block_color.items():
+            colormap[new_bp == block] = color
+
+        self._axis.voxels(filled=not_air, facecolors=colormap)
+        plt.show()
 
 # class tkDisplay:
 #     def __init__(self, model):
@@ -359,8 +384,8 @@ def train_model(model, epochs, initial_epoch=0, display=None):
 if __name__ == '__main__':
     build_world(training=False)
     model = RLearner()
-    # disp  = tkDisplay(model)
-    # disp.update()
+    disp  = tkDisplay(model)
+    disp.update()
     train_model(model, 1000, initial_epoch=model.start_epoch, display=None)
 
 
