@@ -86,13 +86,13 @@ If training=True, sets overclocking and deactivates rendering.'''
     MISSION_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             
-              <About>
-                <Summary>Do stuff!</Summary>
-              </About>
+            <About>
+              <Summary>Place a block!</Summary>
+            </About>
 
               <ModSettings>
-                <MsPerTick>'''+str(int(50/OVERCLOCK_FACTOR if training else 50))+'''</MsPerTick>
-                <!-- <PrioritiseOffscreenRendering>'''+('true' if training else 'false')+'''</PrioritiseOffscreenRendering> -->
+                <MsPerTick>{ms_per_tick}</MsPerTick>
+                <!-- <PrioritiseOffscreenRendering>{offscreen_rendering}</PrioritiseOffscreenRendering> -->
               </ModSettings>
               
             <ServerSection>
@@ -104,12 +104,10 @@ If training=True, sets overclocking and deactivates rendering.'''
                 <Weather>clear</Weather>
               </ServerInitialConditions>
               <ServerHandlers>
-                  <FlatWorldGenerator generatorString="3;1*minecraft:bedrock;1;"/>
-                  <DrawingDecorator>'''+'<DrawCuboid type="air" x1="{x1}" y1="{y1}" z1="{z1}" x2="{x2}" y2="{y2}" z2="{z2}"/>'.format(
-                    x1=ANCHOR_X, x2=ANCHOR_X + ARENA_WIDTH,
-                    y1=ANCHOR_Y, y2=ANCHOR_Y + ARENA_HEIGHT,
-                    z1=ANCHOR_Z, z2=ANCHOR_Z + ARENA_LENGTH
-                    )+'''</DrawingDecorator>
+                  <FlatWorldGenerator generatorString="3;1*minecraft:bedrock;1;" forceReset="1"/>
+                  <DrawingDecorator>
+                    <DrawCuboid type="air" x1="{arena_x1}" y1="{arena_y1}" z1="{arena_z1}" x2="{arena_x2}" y2="{arena_y2}" z2="{arena_z2}"/>
+                  </DrawingDecorator>
                   <ServerQuitFromTimeUp timeLimitMs="20000"/>
                   <ServerQuitWhenAnyAgentFinishes/>
                 </ServerHandlers>
@@ -125,11 +123,23 @@ If training=True, sets overclocking and deactivates rendering.'''
                 </AgentStart>
                 <AgentHandlers>
                   <ObservationFromFullStats/>
+                  <ObservationFromGrid>
+                    <Grid name="world_grid" absoluteCoords="1">
+                      <min x="{arena_x1}" y="{arena_y1}" z="{arena_z1}"/>
+                      <max x="{arena_x2}" y="{arena_y2}" z="{arena_z2}"/>
+                    </Grid>
+                  </ObservationFromGrid>
                   <DiscreteMovementCommands/>
                   <RewardForSendingCommand reward="-1" />
                 </AgentHandlers>
               </AgentSection>
-            </Mission>'''
+            </Mission>'''.format(
+                    ms_per_tick         = int(50/OVERCLOCK_FACTOR if training else 50),
+                    offscreen_rendering = (1 if training else 0),
+                    arena_x1 = ANCHOR_X, arena_x2 = ANCHOR_X - 1 + ARENA_WIDTH,
+                    arena_y1 = ANCHOR_Y, arena_y2 = ANCHOR_Y - 1 + ARENA_HEIGHT,
+                    arena_z1 = ANCHOR_Z, arena_z2 = ANCHOR_Z - 1 + ARENA_LENGTH
+                )
     ACTION_DELAY = (0.2/OVERCLOCK_FACTOR if training else 0.2)
 
     AGENT_HOST = MalmoPython.AgentHost()
@@ -177,12 +187,16 @@ class RLearner:
         self._last_action = None
         self._last_pred = None
 
+    def _preprocess(self, observation):
+        return np.array([[
+            BLUEPRINT_OH,
+            to_categorical( np.vectorize(INPUTS_CODING.get)(observation), len(INPUTS) )
+            ]])
+
     def act(self, last_reward, next_observation):
         # Update model based on last_reward:
 
-        one_hot_obs = to_categorical( np.array(
-                [BLOCK_CODING.get(s, 0) for s in next_observation]
-            ).reshape((1, *INPUT_SHAPE)), len(BLOCKS) )
+        one_hot_obs = self._preprocess(next_observation)
 
         if self._last_pred is not None:
             # Calculate the best-estimate Q-value for last_obs
@@ -224,9 +238,7 @@ class RLearner:
 
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
-        one_hot_obs = to_categorical( np.array(
-                [BLOCK_CODING.get(s, BLOCK_CODING['lava']) for s in observation]
-            ).reshape((1, *INPUT_SHAPE)), len(BLOCKS) )
+        one_hot_obs = self._preprocess(observation)
         raw_pred = self._model.predict(one_hot_obs)[0]
         return dict(zip(ACTIONS, raw_pred))
 
@@ -235,81 +247,36 @@ class tkDisplay:
         self._model = model
         self._scale = 40
         self._block_color = {
-            'stone': '#B0B0C080'
+            'stone': '#B0B0C0'
         }
+        self._real_alpha = 'B0'
+        self._bp_alpha   = '40'
 
         self._fig = plt.figure()
         self._axis = self._fig.add_subplot( 111, projection='3d' )
 
-    def update(self):
+    def update(self, world):
         # Draw the base blueprint
-        new_bp = np.transpose(BLUEPRINT, (1, 2, 0))
-        not_air = new_bp != 'air'
+        new_bp = BLUEPRINT.transpose((1, 2, 0))
+        new_wd = world.transpose((1,2,0))
+        not_air = np.logical_or( (new_bp != 'air'), (new_wd != 'air') )
         colormap = np.full(new_bp.shape, '#00000000')
         for block,color in self._block_color.items():
-            colormap[new_bp == block] = color
+            # Set bp-only blocks to show with bp alpha, world blocks show with real alpha
+            colormap[new_bp == block] = color + self._bp_alpha
+            colormap[world  == block] = color + self._real_alpha
 
         self._axis.voxels(filled=not_air, facecolors=colormap)
         plt.show()
 
-# class tkDisplay:
-#     def __init__(self, model):
-#         self._model = model
-#         self._scale = 40
-#         self._block_color = {
-#             'stone': '#000',
-#             'lava' : '#620',
-#             'lapis_block': '#006'
-#         }
-#         self._action_translation = {
-#             'movenorth 1': (0,-1),
-#             'movesouth 1': (0, 1),
-#             'moveeast 1' : ( 1,0),
-#             'movewest 1' : (-1,0),
-#         }
-
-#         self._root = tk.Tk()
-#         self._root.wm_title("Q Estimates")
-#         self._canvas = tk.Canvas(self._root,
-#             width  = self._scale * len(WORLD_MODEL[0]),
-#             height = self._scale * len(WORLD_MODEL),
-#             borderwidth        = 0,
-#             highlightthickness = 0,
-#             bg = "black"
-#             )
-#         self._canvas.grid()
-#         self._root.update()
-
-#     def update(self):
-#         self._canvas.delete('all')
-#         for y,row in enumerate(WORLD_MODEL):
-#             for x,block in enumerate(row):
-#                 self._canvas.create_rectangle( x*self._scale, y*self._scale, (x+1)*self._scale, (y+1)*self._scale, outline="#fff", fill=self._block_color[block])
-#         # Overlay q-estimates, as different thickness partial lines
-#         for y in range(len(WORLD_MODEL)):
-#             for x in range(len(WORLD_MODEL[y])):
-#                 if WORLD_MODEL[y][x] == 'lava':
-#                     continue
-#                 observation = [WORLD_MODEL[j][i] for j in range(y-1, y+2) for i in range(x-1, x+2)]
-#                 q_values    = self._model.predict(observation)
-#                 total_q = sum(q_values.values())
-#                 for action,q in q_values.items():
-#                     action_x,action_y = self._action_translation[action]
-#                     self._canvas.create_line(
-#                         (x + 0.5 + 0.2*action_x)*self._scale,
-#                         (y + 0.5 + 0.2*action_y)*self._scale,
-#                         (x + 0.5 + 0.5*action_x)*self._scale,
-#                         (y + 0.5 + 0.5*action_y)*self._scale,
-#                         fill="#3A0",
-#                         width=10*q/total_q
-#                         )
-#         self._root.update()
-
-def run_mission(model):
+def run_mission(model, display=None):
 
     # Create default Malmo objects:
     my_mission = MalmoPython.MissionSpec(MISSION_XML, True)
     my_mission_record = MalmoPython.MissionRecordSpec()
+    shape_world_obs = ( lambda obs: np.reshape(obs,
+        (BLUEPRINT.shape[2], BLUEPRINT.shape[1], BLUEPRINT.shape[0])
+        ).transpose((2, 1, 0)) )
 
     # Attempt to start a mission:
     for retry in range(MAX_RETRIES):
@@ -336,6 +303,7 @@ def run_mission(model):
     print("\nMission running.")
 
     total_reward = 0
+    current_r = 0
 
     # Loop until mission ends
     while world_state.is_mission_running:
@@ -343,23 +311,18 @@ def run_mission(model):
         for error in world_state.errors:
             print("Error:",error.text)
         current_r += sum(r.getValue() for r in world_state.rewards)
-        total_reward += current_r
         if len(world_state.observations) > 0:
-            floor = json.loads(world_state.observations[-1].text)["floor3x3"]
-            action = model.act( current_r, floor )
+            raw_obs = json.loads(world_state.observations[-1].text)
+            world = raw_obs["world_grid"]
+            shaped_world = shape_world_obs(world)
+            action = model.act( current_r, shaped_world )
+            if display is not None:
+                display.update(shaped_world)
+            total_reward += current_r
             current_r = 0
             if world_state.is_mission_running:
                 AGENT_HOST.sendCommand( action )
         time.sleep(ACTION_DELAY)
-
-    # # Give server a chance to calculate final rewards
-    # time.sleep(5*ACTION_DELAY)
-    # world_state = AGENT_HOST.getWorldState()
-    # current_r = sum(r.getValue() for r in world_state.rewards)
-    # total_reward += current_r
-    # floor = ['stone'] * INPUT_SHAPE[0] * INPUT_SHAPE[1]
-    # # Act again, just to apply that reward
-    # model.act( current_r, floor )
 
     model.mission_ended()
     print()
@@ -372,10 +335,8 @@ def train_model(model, epochs, initial_epoch=0, display=None):
     for epoch_num in range(initial_epoch, epochs):
         print('Epoch {}/{}'.format(epoch_num, epochs))
         print('Current Epsilon: {}'.format(model._epsilon))
-        reward = run_mission(model)
+        reward = run_mission(model, display=display)
         print('Total reward:', reward)
-        if display is not None:
-            display.update()
         if best_reward is None or reward > best_reward or epoch_num % 10 == 0:
             model.save('epoch_{:03d}.reward_{:03d}'.format(epoch_num, int(reward)))
         if best_reward is None or reward > best_reward:
@@ -385,7 +346,6 @@ if __name__ == '__main__':
     build_world(training=False)
     model = RLearner()
     disp  = tkDisplay(model)
-    disp.update()
-    train_model(model, 1000, initial_epoch=model.start_epoch, display=None)
+    train_model(model, 1000, initial_epoch=model.start_epoch, display=disp)
 
 
