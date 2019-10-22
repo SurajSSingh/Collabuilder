@@ -185,6 +185,26 @@ class WorldModel:
     def get_observation(self):
         return np.array([self._rot_bp, self._world])
 
+    def num_complete(self):
+        return ((self._world == self._rot_bp) & (self._rot_bp != 'air')).sum()
+
+    def num_incomplete(self):
+        return ((self._rot_bp != self._world) & (self._rot_bp != 'air')).sum()
+
+    def num_superfluous(self):
+        return ((self._rot_bp != self._world) & (self._rot_bp == 'air')).sum()
+
+    def agent_in_arena(self):
+        '''Returns true if world is uninitialized or agent is present in world model.'''
+        return (self._world is None) or (self._world == 'agent').any()
+
+    def reward(self):
+        return (
+            (  10 * self.num_complete() ) +
+            ( -10 * self.num_superfluous() ) +
+            (-200 * (not self.agent_in_arena()) )
+            )
+
 class RLearner:
     def __init__(self):
         self._name = 'block_placer_v1.0'
@@ -225,6 +245,7 @@ class RLearner:
 
     def act(self, last_reward, next_observation):
         # DEBUG
+        print('---=== DEBUG Reward = {} ===---'.format(last_reward))
         return ACTIONS[np.random.randint(len(ACTIONS) - 1)]
 
         # Update model based on last_reward:
@@ -341,7 +362,7 @@ def run_mission(model, display=None):
     current_r = 0
 
     # Loop until mission ends
-    while world_state.is_mission_running:
+    while world_state.is_mission_running and world_model.agent_in_arena():
         world_state = AGENT_HOST.getWorldState()
         for error in world_state.errors:
             print("Error:",error.text)
@@ -349,7 +370,7 @@ def run_mission(model, display=None):
         if len(world_state.observations) > 0:
             raw_obs = json.loads(world_state.observations[-1].text)
             world_model.update(raw_obs)
-            # Rotate the world to face the same direction as the agent
+            current_r += world_model.reward()
             action = model.act( current_r, world_model.get_observation() )
             if display is not None:
                 display.update(world_model)
