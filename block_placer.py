@@ -83,7 +83,7 @@ If training=True, sets overclocking and deactivates rendering.'''
 
               <ModSettings>
                 <MsPerTick>{ms_per_tick}</MsPerTick>
-                <!-- <PrioritiseOffscreenRendering>{offscreen_rendering}</PrioritiseOffscreenRendering> -->
+                <PrioritiseOffscreenRendering>{offscreen_rendering}</PrioritiseOffscreenRendering>
               </ModSettings>
               
             <ServerSection>
@@ -234,7 +234,7 @@ class RLearner:
 
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
-        self._epsilon_decay = 0.9995
+        self._epsilon_decay = 0.995
         self._epsilon = 0.90 * (self._epsilon_decay**(self.start_epoch + 1))
         self._discount = 0.95
         self._last_obs = None
@@ -264,7 +264,6 @@ class RLearner:
             self._last_action = self._prediction_network.predict(one_hot_obs).argmax()
 
         # Update epsilon after using it for chance
-        self._epsilon *= self._epsilon_decay
         # Increment counter for target update
         self._iters_since_target_update += 1
         if self._iters_since_target_update >= self._target_update_frequency:
@@ -276,6 +275,7 @@ class RLearner:
     def mission_ended(self):
         self._last_obs = None
         self._last_action = None
+        self._epsilon *= self._epsilon_decay
 
     def save(self, id=None):
         self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
@@ -393,7 +393,7 @@ def train_model(model, epochs, initial_epoch=0, display=None):
             best_reward = reward
 
 if __name__ == '__main__':
-    build_world(training=False)
+    build_world(training=True)
     model = RLearner()
     disp  = Display(model)
     train_model(model, 1000, initial_epoch=model.start_epoch, display=disp)
