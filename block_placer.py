@@ -45,14 +45,14 @@ ARENA_WIDTH  = 5 # X-direction
 ARENA_HEIGHT = 5 # Y-direction
 ARENA_LENGTH = 5 # Z-direction
 ANCHOR_X     = 0
-ANCHOR_Y     = 1
+ANCHOR_Y     = 5
 ANCHOR_Z     = 0
-OFFSET_X     = 0.5
-OFFSET_Y     = 1
-OFFSET_Z     = 0.5
+OFFSET_X     = ANCHOR_X + 0.5
+OFFSET_Y     = ANCHOR_Y
+OFFSET_Z     = ANCHOR_Z + 0.5
 START_X      = 2
-START_Y      = 0
-START_Z      = 2
+START_Y      = 1
+START_Z      = 1
 BLUEPRINT    = None
 BLUEPRINT_OH = None
 MISSION_XML  = None
@@ -101,17 +101,8 @@ If training=True, sets overclocking and deactivates rendering.'''
                 <Weather>clear</Weather>
               </ServerInitialConditions>
               <ServerHandlers>
-                  <FlatWorldGenerator generatorString="3;1*minecraft:bedrock;1;" forceReset="1"/>
-                  <DrawingDecorator>
-                    <DrawBlock type="stone" x="0" y="1" z="0"/>
-                    <DrawBlock type="stone" x="1" y="1" z="0"/>
-                    <DrawBlock type="stone" x="2" y="1" z="0"/>
-                    <DrawBlock type="stone" x="3" y="1" z="0"/>
-                    <DrawBlock type="stone" x="4" y="1" z="0"/>
-                    <DrawBlock type="stone" x="0" y="1" z="1"/>
-                    <DrawBlock type="stone" x="0" y="1" z="2"/>
-                  </DrawingDecorator>
-                  <!-- <ServerQuitFromTimeUp timeLimitMs="20000"/> -->
+                  <FlatWorldGenerator generatorString="3;5*minecraft:bedrock;1;" forceReset="1"/>
+                  <ServerQuitFromTimeUp timeLimitMs="20000"/>
                   <ServerQuitWhenAnyAgentFinishes/>
                 </ServerHandlers>
               </ServerSection>
@@ -133,18 +124,22 @@ If training=True, sets overclocking and deactivates rendering.'''
                     </Grid>
                   </ObservationFromGrid>
                   <DiscreteMovementCommands/>
+                  <MissionQuitCommands/>
                   <RewardForSendingCommand reward="-1" />
                 </AgentHandlers>
               </AgentSection>
             </Mission>'''.format(
                     ms_per_tick         = int(50/OVERCLOCK_FACTOR if training else 50),
                     offscreen_rendering = (1 if training else 0),
-                    start_x = ANCHOR_X + START_X + OFFSET_X,
-                    start_y = ANCHOR_Y + START_Y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
-                    start_z = ANCHOR_Z + START_Z + OFFSET_Z,
+                    start_x = START_X + OFFSET_X,
+                    start_y = START_Y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
+                    start_z = START_Z + OFFSET_Z,
                     arena_x1 = ANCHOR_X, arena_x2 = ANCHOR_X - 1 + ARENA_WIDTH,
                     arena_y1 = ANCHOR_Y, arena_y2 = ANCHOR_Y - 1 + ARENA_HEIGHT,
-                    arena_z1 = ANCHOR_Z, arena_z2 = ANCHOR_Z - 1 + ARENA_LENGTH
+                    arena_z1 = ANCHOR_Z, arena_z2 = ANCHOR_Z - 1 + ARENA_LENGTH,
+                    border_x1 = ANCHOR_X - 1, border_x2 = ANCHOR_X + ARENA_WIDTH,
+                    border_y1 = ANCHOR_Y - 2, border_y2 = ANCHOR_Y - 1,
+                    border_z1 = ANCHOR_Z - 1, border_z2 = ANCHOR_Z + ARENA_LENGTH
                 )
     ACTION_DELAY = (0.2/OVERCLOCK_FACTOR if training else 0.2)
 
@@ -165,19 +160,28 @@ class WorldModel:
         self._world    = None
         self._str_type = '<U{}'.format(max(len(s) for s in INPUTS))
         self._rot_bp   = self._bp
+        self._old_num_complete    = 0
+        self._old_num_incomplete  = 0
+        self._old_num_superfluous = 0
 
     def update(self, raw_obs):
+        if self._world is not None:
+            self._old_num_complete    = self.num_complete()
+            self._old_num_incomplete  = self.num_incomplete()
+            self._old_num_superfluous = self.num_superfluous()
+
         raw_world = np.array( raw_obs["world_grid"], dtype=self._str_type )
         world = np.transpose(np.reshape(raw_world, (ARENA_WIDTH, ARENA_LENGTH, ARENA_HEIGHT)), (2, 0, 1))
         agent_yaw = raw_obs['Yaw']
         agent_x = int(raw_obs['XPos'] - OFFSET_X)
         agent_y = int(raw_obs['YPos'] - OFFSET_Y)
         agent_z = int(raw_obs['ZPos'] - OFFSET_Z)
-        try:
+        print('---=== DEBUG: Agent position (raw) ({},{},{}) ===---'.format(raw_obs['XPos'], raw_obs['YPos'], raw_obs['ZPos']))
+        print('---=== DEBUG: Agent position (log) ({},{},{}) ===---'.format(agent_x, agent_y, agent_z))
+        if (0 <= agent_x < world.shape[0] and 
+            0 <= agent_y < world.shape[1] and 
+            0 <= agent_z < world.shape[2] ):
             world[agent_x, agent_y, agent_z] = 'agent'
-        except IndexError:
-            # Agent has left the arena.
-            pass
         # Rotate world and blueprint to be agent-facing
         self._world  = np.rot90(world,    k=-int(np.round(agent_yaw/90)), axes=(0,2))
         self._rot_bp = np.rot90(self._bp, k=-int(np.round(agent_yaw/90)), axes=(0,2))
@@ -192,17 +196,21 @@ class WorldModel:
         return ((self._rot_bp != self._world) & (self._rot_bp != 'air')).sum()
 
     def num_superfluous(self):
-        return ((self._rot_bp != self._world) & (self._rot_bp == 'air')).sum()
+        return ((self._rot_bp != self._world) & (self._rot_bp == 'air') & (self._world != 'agent')).sum()
 
     def agent_in_arena(self):
         '''Returns true if world is uninitialized or agent is present in world model.'''
         return (self._world is None) or (self._world == 'agent').any()
 
+    def mission_complete(self):
+        return self.num_incomplete() == 0 and self.num_superfluous() == 0
+
     def reward(self):
         return (
-            (  10 * self.num_complete() ) +
-            ( -10 * self.num_superfluous() ) +
-            (-200 * (not self.agent_in_arena()) )
+            (  10 * (self.num_complete() - self._old_num_complete) ) +
+            ( -10 * (self.num_superfluous() - self._old_num_superfluous) ) +
+            (-200 * (not self.agent_in_arena()) ) +
+            ( 200 if self.mission_complete() else 0 )
             )
 
 class RLearner:
@@ -362,7 +370,9 @@ def run_mission(model, display=None):
     current_r = 0
 
     # Loop until mission ends
-    while world_state.is_mission_running and world_model.agent_in_arena():
+    while (world_state.is_mission_running and
+           world_model.agent_in_arena() and
+           not world_model.mission_complete()):
         world_state = AGENT_HOST.getWorldState()
         for error in world_state.errors:
             print("Error:",error.text)
@@ -376,7 +386,9 @@ def run_mission(model, display=None):
                 display.update(world_model)
             total_reward += current_r
             current_r = 0
-            if world_state.is_mission_running:
+            if world_model.mission_complete() or not world_model.agent_in_arena():
+                AGENT_HOST.sendCommand('quit')
+            elif world_state.is_mission_running:
                 AGENT_HOST.sendCommand( action )
         time.sleep(ACTION_DELAY)
 
