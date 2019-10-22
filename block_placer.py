@@ -4,13 +4,6 @@
 # The idea here is to train an agent how to place a block, as well as to experiment with 
 
 # TODO list:
-#   - Implement observations (2 choices)
-#     - Option 1: Full world observation, with voxel for agent
-#       Need to rotate observation so agent always sees world oriented locally ("forward" is always the same cell in observation)
-#       Need to rotate BLUEPRINT_OH input as well, so it stays in correspondence with world observation
-#     - Option 2: Grid observation, with agent implicitly at center of observation
-#       Still need to rotate observations, I think (double check this), so would still need to rotate BLUEPRINT_OH as well.
-#       Also need to slice BLUEPRINT_OH according to current position, to keep correspondence with world observation.
 #   - Define reward structure:
 #     Keep a copy of last world observation, and look at delta b/w last and this.
 #       Literally, keep the OH-encoded last_obs, then take OH-encoded this_obs - last_obs and look for non-zero elements
@@ -47,12 +40,19 @@ else:
 
 MAX_RETRIES = 10
 
-ARENA_WIDTH  = 5
-ARENA_LENGTH = 5
-ARENA_HEIGHT = 5
+# All coordinates are in Minecraft's global coordinate system.
+ARENA_WIDTH  = 5 # X-direction
+ARENA_HEIGHT = 5 # Y-direction
+ARENA_LENGTH = 5 # Z-direction
 ANCHOR_X     = 0
-ANCHOR_Y     = 2
+ANCHOR_Y     = 1
 ANCHOR_Z     = 0
+OFFSET_X     = 0.5
+OFFSET_Y     = 1
+OFFSET_Z     = 0.5
+START_X      = 2
+START_Y      = 0
+START_Z      = 2
 BLUEPRINT    = None
 BLUEPRINT_OH = None
 MISSION_XML  = None
@@ -74,14 +74,11 @@ def build_world(training=False):
 If training=True, sets overclocking and deactivates rendering.'''
     global BLUEPRINT, BLUEPRINT_OH, MISSION_XML, ACTION_DELAY, AGENT_HOST
 
-    BLUEPRINT = [[['air' for _ in range(ARENA_WIDTH)] for _ in range(ARENA_LENGTH)] for _ in range(ARENA_HEIGHT)]
-    BLUEPRINT[0][int(ARENA_LENGTH/2)][int(ARENA_HEIGHT/2)] = 'stone'
+    BLUEPRINT = [[['air' for _ in range(ARENA_WIDTH)] for _ in range(ARENA_HEIGHT)] for _ in range(ARENA_LENGTH)]
+    BLUEPRINT[int(ARENA_LENGTH/2)][0][int(ARENA_HEIGHT/2)] = 'stone'
     BLUEPRINT = np.array(BLUEPRINT)
 
-    BLUEPRINT_OH = to_categorical(
-        [[[INPUTS_CODING[b] for b in row] for row in layer] for layer in BLUEPRINT],
-        len(INPUTS)
-        )
+    BLUEPRINT_OH = to_categorical( np.vectorize(INPUTS_CODING.get)(BLUEPRINT), len(INPUTS) )
 
     MISSION_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -106,9 +103,15 @@ If training=True, sets overclocking and deactivates rendering.'''
               <ServerHandlers>
                   <FlatWorldGenerator generatorString="3;1*minecraft:bedrock;1;" forceReset="1"/>
                   <DrawingDecorator>
-                    <DrawCuboid type="air" x1="{arena_x1}" y1="{arena_y1}" z1="{arena_z1}" x2="{arena_x2}" y2="{arena_y2}" z2="{arena_z2}"/>
+                    <DrawBlock type="stone" x="0" y="1" z="0"/>
+                    <DrawBlock type="stone" x="1" y="1" z="0"/>
+                    <DrawBlock type="stone" x="2" y="1" z="0"/>
+                    <DrawBlock type="stone" x="3" y="1" z="0"/>
+                    <DrawBlock type="stone" x="4" y="1" z="0"/>
+                    <DrawBlock type="stone" x="0" y="1" z="1"/>
+                    <DrawBlock type="stone" x="0" y="1" z="2"/>
                   </DrawingDecorator>
-                  <ServerQuitFromTimeUp timeLimitMs="20000"/>
+                  <!-- <ServerQuitFromTimeUp timeLimitMs="20000"/> -->
                   <ServerQuitWhenAnyAgentFinishes/>
                 </ServerHandlers>
               </ServerSection>
@@ -116,7 +119,7 @@ If training=True, sets overclocking and deactivates rendering.'''
               <AgentSection mode="Survival">
                 <Name>Blockhead</Name>
                 <AgentStart>
-                  <Placement x="0.5" y="2.0" z="0.5" yaw="180" pitch="70"/>
+                  <Placement x="{start_x}" y="{start_y}" z="{start_z}" yaw="0" pitch="70"/>
                   <Inventory>
                     <InventoryObject slot="0" type="stone" quantity="64"/>
                   </Inventory>
@@ -136,6 +139,9 @@ If training=True, sets overclocking and deactivates rendering.'''
             </Mission>'''.format(
                     ms_per_tick         = int(50/OVERCLOCK_FACTOR if training else 50),
                     offscreen_rendering = (1 if training else 0),
+                    start_x = ANCHOR_X + START_X + OFFSET_X,
+                    start_y = ANCHOR_Y + START_Y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
+                    start_z = ANCHOR_Z + START_Z + OFFSET_Z,
                     arena_x1 = ANCHOR_X, arena_x2 = ANCHOR_X - 1 + ARENA_WIDTH,
                     arena_y1 = ANCHOR_Y, arena_y2 = ANCHOR_Y - 1 + ARENA_HEIGHT,
                     arena_z1 = ANCHOR_Z, arena_z2 = ANCHOR_Z - 1 + ARENA_LENGTH
@@ -153,6 +159,31 @@ If training=True, sets overclocking and deactivates rendering.'''
         print(AGENT_HOST.getUsage())
         exit(0)
 
+class WorldModel:
+    def __init__(self, blueprint):
+        self._bp       = blueprint
+        self._world    = None
+        self._str_type = '<U{}'.format(max(len(s) for s in INPUTS))
+        self._rot_bp   = self._bp
+
+    def update(self, raw_obs):
+        raw_world = np.array( raw_obs["world_grid"], dtype=self._str_type )
+        world = np.transpose(np.reshape(raw_world, (ARENA_WIDTH, ARENA_LENGTH, ARENA_HEIGHT)), (2, 0, 1))
+        agent_yaw = raw_obs['Yaw']
+        agent_x = int(raw_obs['XPos'] - OFFSET_X)
+        agent_y = int(raw_obs['YPos'] - OFFSET_Y)
+        agent_z = int(raw_obs['ZPos'] - OFFSET_Z)
+        try:
+            world[agent_x, agent_y, agent_z] = 'agent'
+        except IndexError:
+            # Agent has left the arena.
+            pass
+        # Rotate world and blueprint to be agent-facing
+        self._world  = np.rot90(world,    k=-int(np.round(agent_yaw/90)), axes=(0,2))
+        self._rot_bp = np.rot90(self._bp, k=-int(np.round(agent_yaw/90)), axes=(0,2))
+
+    def get_observation(self):
+        return np.array([self._rot_bp, self._world])
 
 class RLearner:
     def __init__(self):
@@ -188,12 +219,14 @@ class RLearner:
         self._last_pred = None
 
     def _preprocess(self, observation):
-        return np.array([[
-            BLUEPRINT_OH,
+        return np.array([
             to_categorical( np.vectorize(INPUTS_CODING.get)(observation), len(INPUTS) )
-            ]])
+            ])
 
     def act(self, last_reward, next_observation):
+        # DEBUG
+        return ACTIONS[np.random.randint(len(ACTIONS) - 1)]
+
         # Update model based on last_reward:
 
         one_hot_obs = self._preprocess(next_observation)
@@ -242,42 +275,44 @@ class RLearner:
         raw_pred = self._model.predict(one_hot_obs)[0]
         return dict(zip(ACTIONS, raw_pred))
 
-class tkDisplay:
+class Display:
     def __init__(self, model):
         self._model = model
         self._scale = 40
         self._block_color = {
-            'stone': '#B0B0C0'
+            'stone': '#4040D0',
+            'agent': '#D04040'
         }
-        self._real_alpha = 'B0'
-        self._bp_alpha   = '40'
+
+        self._world_alpha = 'D0'
+        self._bp_alpha = '40'
 
         self._fig = plt.figure()
         self._axis = self._fig.add_subplot( 111, projection='3d' )
 
-    def update(self, world):
-        # Draw the base blueprint
-        new_bp = BLUEPRINT.transpose((1, 2, 0))
-        new_wd = world.transpose((1,2,0))
-        not_air = np.logical_or( (new_bp != 'air'), (new_wd != 'air') )
-        colormap = np.full(new_bp.shape, '#00000000')
+    def update(self, world_model):
+        bp, wd = world_model.get_observation()
+        plt_bp = np.flip(bp.transpose( (0,2,1) ), 0)
+        plt_wd = np.flip(wd.transpose( (0,2,1) ), 0)
+        not_air = (plt_bp != 'air') | (plt_wd != 'air')
+        colormap = np.full(plt_bp.shape, '#00000000')
         for block,color in self._block_color.items():
             # Set bp-only blocks to show with bp alpha, world blocks show with real alpha
-            colormap[new_bp == block] = color + self._bp_alpha
-            colormap[world  == block] = color + self._real_alpha
+            colormap[plt_bp == block] = color + self._bp_alpha
+            colormap[plt_wd == block] = color + self._world_alpha
 
+        self._axis.clear()
         self._axis.voxels(filled=not_air, facecolors=colormap)
-        plt.show()
+
+        plt.draw()
+        plt.pause(.001)
 
 def run_mission(model, display=None):
 
     # Create default Malmo objects:
     my_mission = MalmoPython.MissionSpec(MISSION_XML, True)
     my_mission_record = MalmoPython.MissionRecordSpec()
-    shape_world_obs = ( lambda obs: np.reshape(obs,
-        (BLUEPRINT.shape[2], BLUEPRINT.shape[1], BLUEPRINT.shape[0])
-        ).transpose((2, 1, 0)) )
-
+    world_model = WorldModel(BLUEPRINT)
     # Attempt to start a mission:
     for retry in range(MAX_RETRIES):
         try:
@@ -313,11 +348,11 @@ def run_mission(model, display=None):
         current_r += sum(r.getValue() for r in world_state.rewards)
         if len(world_state.observations) > 0:
             raw_obs = json.loads(world_state.observations[-1].text)
-            world = raw_obs["world_grid"]
-            shaped_world = shape_world_obs(world)
-            action = model.act( current_r, shaped_world )
+            world_model.update(raw_obs)
+            # Rotate the world to face the same direction as the agent
+            action = model.act( current_r, world_model.get_observation() )
             if display is not None:
-                display.update(shaped_world)
+                display.update(world_model)
             total_reward += current_r
             current_r = 0
             if world_state.is_mission_running:
@@ -345,7 +380,7 @@ def train_model(model, epochs, initial_epoch=0, display=None):
 if __name__ == '__main__':
     build_world(training=False)
     model = RLearner()
-    disp  = tkDisplay(model)
+    disp  = Display(model)
     train_model(model, 1000, initial_epoch=model.start_epoch, display=disp)
 
 
