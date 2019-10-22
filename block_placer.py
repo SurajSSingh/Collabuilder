@@ -3,13 +3,7 @@
 # The agent is reward for placing a block on this square, and mildly punished for any other action.
 # The idea here is to train an agent how to place a block, as well as to experiment with 
 
-# TODO list:
-#   - Define reward structure:
-#     Keep a copy of last world observation, and look at delta b/w last and this.
-#       Literally, keep the OH-encoded last_obs, then take OH-encoded this_obs - last_obs and look for non-zero elements
-#     If changed block matches blueprint, +10 reward. If changed block doesn't match, -10 reward. If no change, 0 reward.
-
-from keras.models import Sequential
+from keras.models import Sequential, clone_model
 from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
 from keras.utils import to_categorical
 import numpy as np
@@ -176,8 +170,6 @@ class WorldModel:
         agent_x = int(raw_obs['XPos'] - OFFSET_X)
         agent_y = int(raw_obs['YPos'] - OFFSET_Y)
         agent_z = int(raw_obs['ZPos'] - OFFSET_Z)
-        print('---=== DEBUG: Agent position (raw) ({},{},{}) ===---'.format(raw_obs['XPos'], raw_obs['YPos'], raw_obs['ZPos']))
-        print('---=== DEBUG: Agent position (log) ({},{},{}) ===---'.format(agent_x, agent_y, agent_z))
         if (0 <= agent_x < world.shape[0] and 
             0 <= agent_y < world.shape[1] and 
             0 <= agent_z < world.shape[2] ):
@@ -210,13 +202,14 @@ class WorldModel:
             (  10 * (self.num_complete() - self._old_num_complete) ) +
             ( -10 * (self.num_superfluous() - self._old_num_superfluous) ) +
             (-200 * (not self.agent_in_arena()) ) +
-            ( 200 if self.mission_complete() else 0 )
+            ( 200 * (self.mission_complete()) )
             )
 
 class RLearner:
+    '''Implements a target-network Deep Q-Learning architecture.'''
     def __init__(self):
         self._name = 'block_placer_v1.0'
-        self._model = Sequential([
+        self._prediction_network = Sequential([
             # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
             InputLayer(input_shape=(2, *BLUEPRINT_OH.shape)),
             # Reduce incoming 6D tensor to 5D by merging channels (dim 1) and one-hot (dim 6):
@@ -233,18 +226,19 @@ class RLearner:
             # Output one-hot encoded action
             Dense(len(ACTIONS), activation='softmax')
         ])
-        self._model.compile(loss='mse', optimizer='adam', metrics=['mae'])
+        self._prediction_network.compile(loss='mse', optimizer='adam', metrics=['mae'])
         self.start_epoch = 0
-        self._model,self.start_epoch = std_load(self._name, self._model)
+        self._prediction_network,self.start_epoch = std_load(self._name, self._prediction_network)
+        self._target_network = clone_model(self._prediction_network)
+
+
+        self._target_update_frequency = 20
+        self._iters_since_target_update = 0
         self._epsilon_decay = 0.9995
         self._epsilon = 0.90 * (self._epsilon_decay**(self.start_epoch + 1))
         self._discount = 0.95
-        self._history = []
-        self._sample_size = 128
-        self._max_history_size = 1 * self._sample_size
         self._last_obs = None
         self._last_action = None
-        self._last_pred = None
 
     def _preprocess(self, observation):
         return np.array([
@@ -252,51 +246,39 @@ class RLearner:
             ])
 
     def act(self, last_reward, next_observation):
-        # DEBUG
-        print('---=== DEBUG Reward = {} ===---'.format(last_reward))
-        return ACTIONS[np.random.randint(len(ACTIONS) - 1)]
-
         # Update model based on last_reward:
 
         one_hot_obs = self._preprocess(next_observation)
 
-        if self._last_pred is not None:
-            # Calculate the best-estimate Q-value for last_obs
-            self._last_pred[self._last_action] = last_reward + self._discount * self._last_pred.max()
-            # Save last observation and updated Q-values, cutting out batch axis on last_obs
-            self._history.insert(0, (self._last_obs[0], self._last_pred))
-            # trim the list using pop, since this is usually a small change
-            while len(self._history) > self._max_history_size:
-                self._history.pop()
-            # Use that to update the model
-            # self._model.fit(self._last_obs, self._last_pred, epochs=1, verbose=0)
-        if len(self._history) > 0:
-            # Use random sample of history to update model:
-            training_set = random.sample(self._history, min(self._sample_size, len(self._history)))
-            X_train = np.array([x for x,_ in training_set])
-            Y_train = np.array([y for _,y in training_set])
-            self._model.train_on_batch(X_train, Y_train)
+        if self._last_obs is not None:
+            target = last_reward + self._discount * self._target_network.predict(self._last_obs).max()
+            target_vec = self._target_network.predict(self._last_obs)
+            target_vec[0, self._last_action] = target
+            self._prediction_network.train_on_batch(self._last_obs, target_vec)
 
         # Now, choose next action, and store last_* info for next iteration
-        self._last_pred = self._model.predict(one_hot_obs)[0]
         self._last_obs  = one_hot_obs
         if chance(self._epsilon):
             self._last_action = np.random.randint(len(ACTIONS))
         else:
-            self._last_action = self._last_pred.argmax()
+            self._last_action = self._prediction_network.predict(one_hot_obs).argmax()
 
         # Update epsilon after using it for chance
         self._epsilon *= self._epsilon_decay
+        # Increment counter for target update
+        self._iters_since_target_update += 1
+        if self._iters_since_target_update >= self._target_update_frequency:
+            self._target_network.set_weights(self._prediction_network.get_weights())
+            self._iters_since_target_update = 0
 
         return ACTIONS[self._last_action]
 
     def mission_ended(self):
         self._last_obs = None
         self._last_action = None
-        self._last_pred = None
 
     def save(self, id=None):
-        self._model.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
+        self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
 
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
