@@ -17,7 +17,10 @@ import sys
 import os
 import json
 
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
 
 if sys.version_info[0] == 2:
@@ -31,6 +34,9 @@ if sys.version_info[0] == 2:
 else:
     import functools
     print = functools.partial(print, flush=True)
+
+MODEL_NAME     = 'block_placer'
+VERSION_NUMBER = '1.1'
 
 MAX_RETRIES = 10
 
@@ -63,14 +69,18 @@ ACTION_CODING = {s:i for i,s in enumerate(ACTIONS)}
 
 OVERCLOCK_FACTOR = 5
 
-def build_world(training=False):
+def build_world(training=False, randomize_start_xz=False):
     '''Sets global variables that represent the world, and connects AGENT_HOST.
 If training=True, sets overclocking and deactivates rendering.'''
     global BLUEPRINT, BLUEPRINT_OH, MISSION_XML, ACTION_DELAY, AGENT_HOST
 
     BLUEPRINT = [[['air' for _ in range(ARENA_WIDTH)] for _ in range(ARENA_HEIGHT)] for _ in range(ARENA_LENGTH)]
-    BLUEPRINT[int(ARENA_LENGTH/2)][0][int(ARENA_HEIGHT/2)] = 'stone'
+    BLUEPRINT[int(ARENA_LENGTH/2)][0][int(ARENA_WIDTH/2)] = 'stone'
     BLUEPRINT = np.array(BLUEPRINT)
+
+    start_x = (np.random.randint(ARENA_LENGTH) if randomize_start_xz else START_X)
+    start_z = (np.random.randint(ARENA_WIDTH) if randomize_start_xz else START_Z)
+    start_y = START_Y
 
     BLUEPRINT_OH = to_categorical( np.vectorize(INPUTS_CODING.get)(BLUEPRINT), len(INPUTS) )
 
@@ -125,9 +135,9 @@ If training=True, sets overclocking and deactivates rendering.'''
             </Mission>'''.format(
                     ms_per_tick         = int(50/OVERCLOCK_FACTOR if training else 50),
                     offscreen_rendering = (1 if training else 0),
-                    start_x = START_X + OFFSET_X,
-                    start_y = START_Y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
-                    start_z = START_Z + OFFSET_Z,
+                    start_x = start_x + OFFSET_X,
+                    start_y = start_y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
+                    start_z = start_z + OFFSET_Z,
                     arena_x1 = ANCHOR_X, arena_x2 = ANCHOR_X - 1 + ARENA_WIDTH,
                     arena_y1 = ANCHOR_Y, arena_y2 = ANCHOR_Y - 1 + ARENA_HEIGHT,
                     arena_z1 = ANCHOR_Z, arena_z2 = ANCHOR_Z - 1 + ARENA_LENGTH,
@@ -208,7 +218,7 @@ class WorldModel:
 class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
     def __init__(self):
-        self._name = 'block_placer_v1.0'
+        self._name = MODEL_NAME + '_v' + VERSION_NUMBER
         self._prediction_network = Sequential([
             # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
             InputLayer(input_shape=(2, *BLUEPRINT_OH.shape)),
@@ -300,6 +310,7 @@ class Display:
 
         self._fig = plt.figure()
         self._axis = self._fig.add_subplot( 111, projection='3d' )
+        self._fig.show()
 
     def update(self, world_model):
         bp, wd = world_model.get_observation()
@@ -315,8 +326,7 @@ class Display:
         self._axis.clear()
         self._axis.voxels(filled=not_air, facecolors=colormap)
 
-        plt.draw()
-        plt.pause(.001)
+        self._fig.canvas.flush_events()
 
 def run_mission(model, display=None):
 
@@ -383,6 +393,8 @@ def run_mission(model, display=None):
 def train_model(model, epochs, initial_epoch=0, display=None):
     best_reward = None
     for epoch_num in range(initial_epoch, epochs):
+        if epoch_num % 10 == 0:
+            build_world(training=True, randomize_start_xz=True)
         print('Epoch {}/{}'.format(epoch_num, epochs))
         print('Current Epsilon: {}'.format(model._epsilon))
         reward = run_mission(model, display=display)
@@ -393,7 +405,7 @@ def train_model(model, epochs, initial_epoch=0, display=None):
             best_reward = reward
 
 if __name__ == '__main__':
-    build_world(training=True)
+    build_world(training=True, randomize_start_xz=True)
     model = RLearner()
     disp  = Display(model)
     train_model(model, 1000, initial_epoch=model.start_epoch, display=disp)
