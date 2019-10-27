@@ -7,7 +7,7 @@ from keras.models import Sequential, clone_model
 from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
 from keras.utils import to_categorical
 import numpy as np
-from utils import chance, std_load, ask_options
+from utils import chance, std_load, ask_options, ask_yn
 import random
 import math
 
@@ -340,7 +340,8 @@ class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
     def __init__(self, save_history=False):
         self._name = MODEL_NAME + '_v' + VERSION_NUMBER
-        self._history_file = ('history/{}.npz'.format(self._name) if save_history else None)
+        self._save_history = save_history
+        self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
         self._prediction_network = Sequential([
             # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
@@ -423,7 +424,7 @@ class RLearner:
 
     def save_history(self):
         # TODO: consider mem-mapping to deal with large history files
-        if (self._history_file is not None) and len(self._unsaved_history['observation']) > 0:
+        if self._save_history and len(self._unsaved_history['observation']) > 0:
             new_history = {k:np.array(v) for k,v in self._unsaved_history.items()}
             for v in self._unsaved_history.values():
                 v.clear()
@@ -435,19 +436,27 @@ class RLearner:
 
     def train_on_history(self, batch_size=1000, batches=100):
         # TODO: consider mem-mapping to deal with large history files
-        history = np.load(self._history_file)
-        for _ in range(batches):
+        try:
+            history = np.load(self._history_file)
+        except IOError:
+            print('No history file. Could not train on history.')
+            return
+        print('Training on history...')
+        for batch_num in range(batches):
+            if batch_num % int(batches / 10) == 0:
+                print('{:3>}%'.format(int(100 * batch_num / batches)))
             idx = np.random.randint(history['observation'].shape[0], size=batch_size)
             X = history['observation'][idx]
             Y = self._target_network.predict(history['observation'][idx])
-            Y[np.arange(Y.shape[0]),history['action'][idx]] = (
-                    history['reward'] + 
+            Y[np.arange(Y.shape[0]), np.array(history['action'][idx], dtype='int')] = (
+                    history['reward'][idx] +
                     self._discount * self._target_network.predict(history['next_observation'][idx]).max(axis=1)
                 )
             self._prediction_network.train_on_batch(X, Y)
 
             self._iters_since_target_update += batch_size
             self._maybe_update_pn()
+        print('Finished training on history.')
 
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
@@ -601,8 +610,17 @@ if __name__ == '__main__':
     }
     set_training,set_display,set_simulated = modes[ask_options('Select execution mode:', list(modes.keys()))]
 
+    if set_training:
+        save_history  = ask_yn('Save samples to history file?')
+        train_history = ask_yn('Train on history file first?')
+    else:
+        save_history,train_history = False,False
+
     build_world(training=set_training, randomize_start_xz=True)
-    model = RLearner(save_history=True)
+    model = RLearner(save_history=save_history)
+    if train_history:
+        model.train_on_history()
+
     disp  = (Display(model) if set_display else None)
     train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
 
