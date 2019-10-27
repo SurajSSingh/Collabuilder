@@ -7,7 +7,7 @@ from keras.models import Sequential, clone_model
 from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
 from keras.utils import to_categorical
 import numpy as np
-from utils import chance, std_load
+from utils import chance, std_load, ask_options
 import random
 import math
 
@@ -36,14 +36,16 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME     = 'block_placer'
-VERSION_NUMBER = '2.0'
+VERSION_NUMBER = '2.2'
 
 MAX_RETRIES = 10
 
-NUM_EPISODES     = 1000
+NUM_EPISODES     = 10000
+SAVE_FREQ        = int(NUM_EPISODES / 100)
 MAX_EPISODE_TIME = 20
 INITIAL_EPSILON  = 0.5
-EPSILON_DECAY    = 0.995
+FINAL_EPSILON    = 0.01
+EPSILON_DECAY    = (FINAL_EPSILON / INITIAL_EPSILON)**(1.0/NUM_EPISODES)
 
 # All coordinates are in Minecraft's global coordinate system.
 ARENA_WIDTH  = 5 # X-direction
@@ -138,7 +140,7 @@ If training=True, sets overclocking and deactivates rendering.'''
               </AgentSection>
             </Mission>'''.format(
                     ms_per_tick         = int(50/OVERCLOCK_FACTOR if training else 50),
-                    offscreen_rendering = (1 if training else 0),
+                    offscreen_rendering = ('false' if training else 'true'),
                     start_x = start_x + OFFSET_X,
                     start_y = start_y + OFFSET_Y - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
                     start_z = start_z + OFFSET_Z,
@@ -188,7 +190,8 @@ class WorldModel:
             self._old_num_superfluous = self.num_superfluous()
 
         raw_world = np.array( raw_obs["world_grid"], dtype=self._str_type )
-        world = np.transpose(np.reshape(raw_world, (ARENA_WIDTH, ARENA_LENGTH, ARENA_HEIGHT+1)), (2, 0, 1))
+        extended_world = np.transpose(np.reshape(raw_world, (ARENA_HEIGHT+1, ARENA_WIDTH, ARENA_LENGTH)), (2, 0, 1))
+        world = extended_world[:,1:,:]
         agent_yaw = raw_obs['Yaw']
         agent_x = int(raw_obs['XPos'] - OFFSET_X)
         agent_y = int(raw_obs['YPos'] - OFFSET_Y)
@@ -198,9 +201,8 @@ class WorldModel:
             0 <= agent_z < world.shape[2] ):
             world[agent_x, agent_y, agent_z] = 'agent'
         # Rotate world and blueprint to be agent-facing
-        extended_world = np.rot90(world,    k=-int(np.round(agent_yaw/90)), axes=(0,2))
-        self._world  = extended_world[:,1:,:]
         self._attacked_floor = (extended_world[:,0,:] == 'air').any()
+        self._world  = np.rot90(world,    k=-int(np.round(agent_yaw/90)), axes=(0,2))
         self._rot_bp = np.rot90(self._bp, k=-int(np.round(agent_yaw/90)), axes=(0,2))
 
     def simulate(self, action):
@@ -308,6 +310,12 @@ class WorldModel:
         #   Finally, takes min of these distances as output
         return np.sum( (incomplete - np.repeat(agent_pos.reshape((-1, 1)), incomplete.shape[1]))**2, axis=0 ).min()
 
+    def facing_incomplete(self):
+        agent_pos = self.agent_position()
+        return ((agent_pos[2] < self._world.shape[2] - 1) and
+                ( self._world[agent_pos[0], agent_pos[1], agent_pos[2]+1] == 'air') and
+                (self._rot_bp[agent_pos[0], agent_pos[1], agent_pos[2]+1] != 'air') )
+
     def reward(self):
         if self.agent_attacked_floor() or not self.agent_in_arena():
             return -1
@@ -320,6 +328,7 @@ class WorldModel:
             #   so that agent optimizes that part all blocks are complete
             #   Avoids possibility of dancing around the last incomplete block to gain reward
             (  0.1 * (1 - abs((1/max_dist) - self.distance_to_incomplete(default=1))**0.4) ) +
+            (  0.1 * (self.facing_incomplete()) ) +
             # Reward actually placing necessary blocks, and penalize placing superfluous ones
             #   This also penalizes removing necessary blocks, and rewards removing superfluous ones
             #   That second function avoids being able to place the same block over and over to rack up rewards
@@ -533,7 +542,7 @@ def run_simulated_mission(model, display=None):
 def train_model(model, epochs, initial_epoch=0, display=None, simulated=False):
     best_reward = None
     for epoch_num in range(initial_epoch, epochs):
-        if epoch_num % 10 == 0:
+        if epoch_num % SAVE_FREQ == 0:
             build_world(training=True, randomize_start_xz=True)
         print('Epoch {}/{}'.format(epoch_num, epochs))
         print('Current Epsilon: {}'.format(model._epsilon))
@@ -545,9 +554,18 @@ def train_model(model, epochs, initial_epoch=0, display=None, simulated=False):
             best_reward = reward
 
 if __name__ == '__main__':
-    build_world(training=True, randomize_start_xz=True)
+    modes = {
+        'Training - Simulated, no Display': (True, False, True),
+        'Training - Simulated w/ Display': (True, True, True),
+        'Training - Real w/ Display': (True, True, False),
+        'Demonstration - Simulated': (False, True, True),
+        'Demonstration - Real': (False, True, False)
+    }
+    set_training,set_display,set_simulated = modes[ask_options('Select execution mode:', list(modes.keys()))]
+
+    build_world(training=set_training, randomize_start_xz=True)
     model = RLearner()
-    disp  = Display(model)
-    train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=True)
+    disp  = (Display(model) if set_display else None)
+    train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
 
 

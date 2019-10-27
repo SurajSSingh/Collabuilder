@@ -63,3 +63,19 @@ def ask_yn(question):
         print('Invalid response.')
         s = input(question + ' (y/n) ').lower()
     return s in {'yes', 'y'}
+
+def ask_options(prompt, options):
+    i = None
+    while i is None:
+        print(prompt)
+        for i,opt in enumerate(options):
+            print("{:>3}) {}".format(i+1, opt))
+        try:
+            i = int(input("Selection: "))
+            if i < 1 or i > len(options):
+                raise ValueError()
+        except ValueError:
+            print("Invalid choice. Please enter the number to the left of the desired option.")
+            i = None
+    return options[i-1]
+
