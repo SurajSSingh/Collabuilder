@@ -7,7 +7,7 @@ CHECKPOINT_DIR = 'checkpoint/'
 
 def std_checkpoint(name):
     return keras.callbacks.ModelCheckpoint(
-        filepath=CHECKPOINT_DIR + name + '.epoch_{epoch:03d}.val_loss_{val_loss:.3f}.hdf5',
+        filepath=CHECKPOINT_DIR + name + '.epoch_{epoch:09d}.val_loss_{val_loss:.3f}.hdf5',
         verbose=1,
         save_best_only=True
     )

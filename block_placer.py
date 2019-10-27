@@ -36,11 +36,11 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME     = 'block_placer'
-VERSION_NUMBER = '2.2'
+VERSION_NUMBER = '2.3'
 
 MAX_RETRIES = 10
 
-NUM_EPISODES     = 10000
+NUM_EPISODES     = 100000
 SAVE_FREQ        = int(NUM_EPISODES / 100)
 MAX_EPISODE_TIME = 20
 INITIAL_EPSILON  = 0.5
@@ -338,8 +338,10 @@ class WorldModel:
 
 class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
-    def __init__(self):
+    def __init__(self, save_history=False):
         self._name = MODEL_NAME + '_v' + VERSION_NUMBER
+        self._history_file = ('history/{}.npz'.format(self._name) if save_history else None)
+        self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
         self._prediction_network = Sequential([
             # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
             InputLayer(input_shape=(2, *BLUEPRINT_OH.shape)),
@@ -347,6 +349,7 @@ class RLearner:
             Permute((1, 5, 2, 3, 4)),
             Reshape((-1, *BLUEPRINT.shape)),
             # Convolve each input, treating the blueprint and world state as separate channels
+            Conv3D(8, (3, 3, 3), padding="same", data_format="channels_first", activation="relu"),
             Conv3D(8, (3, 3, 3), padding="same", data_format="channels_first", activation="relu"),
             # max-pool features together a bit:
             MaxPooling3D(pool_size=BLUEPRINT.shape, data_format="channels_first"),
@@ -362,7 +365,6 @@ class RLearner:
         self._prediction_network,self.start_epoch = std_load(self._name, self._prediction_network)
         self._target_network = clone_model(self._prediction_network)
 
-
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
         self._epsilon_decay = EPSILON_DECAY
@@ -376,16 +378,25 @@ class RLearner:
             to_categorical( np.vectorize(INPUTS_CODING.get)(observation), len(INPUTS) )
             ])
 
+    def _maybe_update_pn(self):
+        if self._iters_since_target_update >= self._target_update_frequency:
+            self._target_network.set_weights(self._prediction_network.get_weights())
+            self._iters_since_target_update = 0
+
     def act(self, last_reward, next_observation):
         # Update model based on last_reward:
 
         one_hot_obs = self._preprocess(next_observation)
 
         if self._last_obs is not None:
-            target = last_reward + self._discount * self._target_network.predict(self._last_obs).max()
+            target = last_reward + self._discount * self._target_network.predict(one_hot_obs).max()
             target_vec = self._target_network.predict(self._last_obs)
             target_vec[0, self._last_action] = target
             self._prediction_network.train_on_batch(self._last_obs, target_vec)
+            self._unsaved_history['observation'].append(self._last_obs[0])
+            self._unsaved_history['action'].append(self._last_action)
+            self._unsaved_history['reward'].append(last_reward)
+            self._unsaved_history['next_observation'].append(one_hot_obs[0])
 
         # Now, choose next action, and store last_* info for next iteration
         self._last_obs  = one_hot_obs
@@ -397,9 +408,7 @@ class RLearner:
         # Update epsilon after using it for chance
         # Increment counter for target update
         self._iters_since_target_update += 1
-        if self._iters_since_target_update >= self._target_update_frequency:
-            self._target_network.set_weights(self._prediction_network.get_weights())
-            self._iters_since_target_update = 0
+        self._maybe_update_pn()
 
         return ACTIONS[self._last_action]
 
@@ -410,6 +419,35 @@ class RLearner:
 
     def save(self, id=None):
         self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
+        self.save_history()
+
+    def save_history(self):
+        # TODO: consider mem-mapping to deal with large history files
+        if (self._history_file is not None) and len(self._unsaved_history['observation']) > 0:
+            new_history = {k:np.array(v) for k,v in self._unsaved_history.items()}
+            for v in self._unsaved_history.values():
+                v.clear()
+            try:
+                old_history = np.load(self._history_file)
+            except IOError:
+                old_history = {k:np.zeros((0, *v.shape[1:])) for k,v in new_history.items()}
+            np.savez(self._history_file, **{k:np.concatenate([old_history[k], v]) for k,v in new_history.items()})
+
+    def train_on_history(self, batch_size=1000, batches=100):
+        # TODO: consider mem-mapping to deal with large history files
+        history = np.load(self._history_file)
+        for _ in range(batches):
+            idx = np.random.randint(history['observation'].shape[0], size=batch_size)
+            X = history['observation'][idx]
+            Y = self._target_network.predict(history['observation'][idx])
+            Y[np.arange(Y.shape[0]),history['action'][idx]] = (
+                    history['reward'] + 
+                    self._discount * self._target_network.predict(history['next_observation'][idx]).max(axis=1)
+                )
+            self._prediction_network.train_on_batch(X, Y)
+
+            self._iters_since_target_update += batch_size
+            self._maybe_update_pn()
 
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
@@ -542,13 +580,13 @@ def run_simulated_mission(model, display=None):
 def train_model(model, epochs, initial_epoch=0, display=None, simulated=False):
     best_reward = None
     for epoch_num in range(initial_epoch, epochs):
-        if epoch_num % SAVE_FREQ == 0:
+        if epoch_num % 10 == 0:
             build_world(training=True, randomize_start_xz=True)
         print('Epoch {}/{}'.format(epoch_num, epochs))
         print('Current Epsilon: {}'.format(model._epsilon))
         reward = (run_simulated_mission(model, display=display) if simulated else run_mission(model, display=display))
         print('Total reward:', reward)
-        if best_reward is None or reward > best_reward or epoch_num % 10 == 0:
+        if best_reward is None or reward > best_reward or epoch_num % SAVE_FREQ == 0:
             model.save('epoch_{:03d}.reward_{:03d}'.format(epoch_num, int(reward)))
         if best_reward is None or reward > best_reward:
             best_reward = reward
@@ -564,7 +602,7 @@ if __name__ == '__main__':
     set_training,set_display,set_simulated = modes[ask_options('Select execution mode:', list(modes.keys()))]
 
     build_world(training=set_training, randomize_start_xz=True)
-    model = RLearner()
+    model = RLearner(save_history=True)
     disp  = (Display(model) if set_display else None)
     train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
 
