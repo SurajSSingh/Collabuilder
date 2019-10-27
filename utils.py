@@ -64,18 +64,32 @@ def ask_yn(question):
         s = input(question + ' (y/n) ').lower()
     return s in {'yes', 'y'}
 
-def ask_options(prompt, options):
+def ask_int(prompt, min_val=None, max_val=None):
+    '''Asks user for an integer, between min_val and max_val, inclusive.'''
     i = None
     while i is None:
-        print(prompt)
-        for i,opt in enumerate(options):
-            print("{:>3}) {}".format(i+1, opt))
         try:
-            i = int(input("Selection: "))
-            if i < 1 or i > len(options):
+            i = int(input(prompt))
+            if (min_val is not None and i < min_val) or (max_val is not None and i > max_val):
                 raise ValueError()
         except ValueError:
-            print("Invalid choice. Please enter the number to the left of the desired option.")
-            i = None
-    return options[i-1]
+            print("Invalid choice. Please enter an integer", end='')
+            if min_val is None:
+                if max_val is None:
+                    print('.')
+                else:
+                    print(' no more than {}.'.format(max_val))
+            else:
+                if max_val is None:
+                    print(' at least {}.'.format(min_val))
+                else:
+                    print(' between {} and {} inclusive.'.format(min_val, max_val))
+    return i
 
+def ask_options(prompt, options):
+    '''Asks user to select from a list of options.'''
+    print(prompt)
+    for i,opt in enumerate(options):
+        print("{:>3}) {}".format(i+1, opt))
+    i = ask_int('Selection: ', 1, len(options))
+    return options[i-1]

@@ -5,9 +5,10 @@
 
 from keras.models import Sequential, clone_model
 from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
-from keras.utils import to_categorical
+from keras.utils import to_categorical, Sequence
+from keras.callbacks import LambdaCallback
 import numpy as np
-from utils import chance, std_load, ask_options, ask_yn
+from utils import chance, std_load, ask_options, ask_yn, ask_int
 import random
 import math
 
@@ -36,7 +37,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME     = 'block_placer'
-VERSION_NUMBER = '2.3'
+VERSION_NUMBER = '2.4'
 
 MAX_RETRIES = 10
 
@@ -338,6 +339,47 @@ class WorldModel:
 
 class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
+
+    class HistoryGenerator(Sequence):
+        '''Generates training data based on a history file.'''
+        # Based on https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
+        def __init__(self, history_file, batch_size, batches, discount, target_network):
+            try:
+                self._history = np.load(history_file)
+            except IOError:
+                print('No history file. Could not train on history.')
+                return
+            self._batch_size     = batch_size
+            self._batches        = batches
+            self._discount       = discount
+            self._target_network = target_network
+            self._history_length = self._history['observation'].shape[0]
+            self.on_epoch_end()
+
+        def on_epoch_end(self):
+            print('Generating training data...')
+            # First, generate all the indices for all the batches
+            idx = np.random.randint(self._history_length, size=(self._batches * self._batch_size))
+            # Collect inputs:
+            self._X = self._history['observation'][idx]
+            # Compute basic outputs:
+            self._Y = self._target_network.predict(self._history['observation'][idx])
+            # Compute best-estimate outputs for the action that was taken on that sample,
+            #   using reward for that action and current best-estimate of the next state
+            self._Y[np.arange(self._Y.shape[0]), np.array(self._history['action'][idx], dtype='int')] = (
+                    self._history['reward'][idx] +
+                    self._discount * self._target_network.predict(self._history['next_observation'][idx]).max(axis=1)
+                )
+            print('Generated.')
+
+        def __len__(self):
+            return self._batches
+
+        def __getitem__(self, idx):
+            start = idx * self._batch_size
+            end   = start + self._batch_size
+            return (self._X[start:end], self._Y[start:end])
+
     def __init__(self, save_history=False):
         self._name = MODEL_NAME + '_v' + VERSION_NUMBER
         self._save_history = save_history
@@ -365,6 +407,7 @@ class RLearner:
         self.start_epoch = 0
         self._prediction_network,self.start_epoch = std_load(self._name, self._prediction_network)
         self._target_network = clone_model(self._prediction_network)
+        self._target_network.build(self._prediction_network.input_shape)
 
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
@@ -434,28 +477,23 @@ class RLearner:
                 old_history = {k:np.zeros((0, *v.shape[1:])) for k,v in new_history.items()}
             np.savez(self._history_file, **{k:np.concatenate([old_history[k], v]) for k,v in new_history.items()})
 
-    def train_on_history(self, batch_size=1000, batches=100):
-        # TODO: consider mem-mapping to deal with large history files
-        try:
-            history = np.load(self._history_file)
-        except IOError:
-            print('No history file. Could not train on history.')
-            return
+    def train_on_history(self, batch_size=1000, batches=100, epochs=10):
         print('Training on history...')
-        for batch_num in range(batches):
-            if batch_num % int(batches / 10) == 0:
-                print('{:3>}%'.format(int(100 * batch_num / batches)))
-            idx = np.random.randint(history['observation'].shape[0], size=batch_size)
-            X = history['observation'][idx]
-            Y = self._target_network.predict(history['observation'][idx])
-            Y[np.arange(Y.shape[0]), np.array(history['action'][idx], dtype='int')] = (
-                    history['reward'][idx] +
-                    self._discount * self._target_network.predict(history['next_observation'][idx]).max(axis=1)
-                )
-            self._prediction_network.train_on_batch(X, Y)
 
+        def update_pn(*args, **kwargs):
             self._iters_since_target_update += batch_size
             self._maybe_update_pn()
+
+        self._prediction_network.fit_generator(RLearner.HistoryGenerator(
+                history_file   = self._history_file,
+                batch_size     = batch_size,
+                batches        = batches,
+                discount       = self._discount,
+                target_network = self._target_network
+                ),
+            epochs=epochs,
+            callbacks=[LambdaCallback(on_batch_end=update_pn)]
+            )
         print('Finished training on history.')
 
     def predict(self, observation):
@@ -619,7 +657,11 @@ if __name__ == '__main__':
     build_world(training=set_training, randomize_start_xz=True)
     model = RLearner(save_history=save_history)
     if train_history:
-        model.train_on_history()
+        model.train_on_history(
+            batch_size = ask_int('Batch size for history training: ', min_val = 1),
+            batches    = ask_int('Batches per epoch for history training: ', min_val = 1),
+            epochs     = ask_int('Epochs for history training: ', min_val = 1)
+        )
 
     disp  = (Display(model) if set_display else None)
     train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
