@@ -596,7 +596,7 @@ def run_mission(model, display=None):
 
     return total_reward
 
-def run_simulated_mission(model, display=None):
+def run_simulated_mission(model, display=None, use_delays=False):
     print("Simulated mission running.")
 
     world_model  = WorldModel(BLUEPRINT, simulated=True)
@@ -613,6 +613,8 @@ def run_simulated_mission(model, display=None):
             display.update(world_model)
         total_reward += current_r
         world_model.simulate(action)
+        if use_delays:
+            time.sleep(ACTION_DELAY)
 
     # Collect last reward, and give to model, then end the mission
     current_r = world_model.reward()
@@ -662,8 +664,12 @@ if __name__ == '__main__':
             batches    = ask_int('Batches per epoch for history training: ', min_val = 1),
             epochs     = ask_int('Epochs for history training: ', min_val = 1)
         )
-
     disp  = (Display(model) if set_display else None)
-    train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
+    if set_training:
+        train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated)
+    elif set_simulated:
+        run_simulated_mission(model, display=disp, use_delays=True)
+    else:
+        run_mission(model, display=disp)
 
 
