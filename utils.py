@@ -2,8 +2,10 @@ import keras
 import numpy as np
 import glob
 import re
+import json
 
 CHECKPOINT_DIR = 'checkpoint/'
+CONFIG_DIR     = 'config/'
 
 def std_checkpoint(name):
     return keras.callbacks.ModelCheckpoint(
@@ -93,3 +95,14 @@ def ask_options(prompt, options):
         print("{:>3}) {}".format(i+1, opt))
     i = ask_int('Selection: ', 1, len(options))
     return options[i-1]
+
+def get_config(config_file, *attributes, config_dir=CONFIG_DIR):
+    '''Fetches a value specified by attributes, from config_file in config_dir.'''
+    if config_file[-5:] != '.json':
+        config_file += '.json'
+    with open(config_dir + config_file) as f:
+        json_object = json.load(f)
+    for a in attributes:
+        json_object = json_object[a]
+    return json_object
+
