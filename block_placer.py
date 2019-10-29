@@ -28,7 +28,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME = 'bp_simplified'
-VERSION_NUMBER  = '1.1'
+VERSION_NUMBER  = '1.3'
 CONFIG_FILE = MODEL_NAME + '_v' + VERSION_NUMBER
 cfg = lambda *args: get_config(CONFIG_FILE, *args)
 
@@ -427,6 +427,7 @@ def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, p
             model.save('epoch_{:09d}.reward_{:03d}'.format(epoch_num, int(reward)))
         if best_reward is None or reward > best_reward:
             best_reward = reward
+    model.save('epoch_{:09d}.reward_{:03d}'.format(epoch_num, int(reward)))
 
 if __name__ == '__main__':
     modes = {
@@ -451,6 +452,8 @@ if __name__ == '__main__':
         pr = ask_yn('Plot rewards?')
         train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated, plot_rewards=pr)
         print('Training complete.\n\n')
+
+    input('Press ENTER to demonstrate...')
 
     # Training complete or skipped, just show learned policy:
     model._epsilon = 0
