@@ -190,7 +190,7 @@ class WorldModel:
         #   Then, computes difference of coordinates, and element-wise squares them
         #   Next, sums acroos coords of each sample, to give a 1D output vector
         #   Finally, takes min of these distances as output
-        return np.sum( (incomplete - np.repeat(agent_pos.reshape((-1, 1)), incomplete.shape[1]))**2, axis=0 ).min()
+        return np.sqrt( np.sum( (incomplete - np.tile(agent_pos.reshape((-1, 1)), incomplete.shape[1]))**2, axis=0 ).min() )
 
     def facing_incomplete(self):
         agent_pos = self.agent_position()
@@ -209,12 +209,15 @@ class WorldModel:
         if self.mission_complete():
             return self._reward_weight['mission_complete']
         # Compute the farthest an agent could theoretically be from the nearest blueprint block: opposite world corner
-        max_dist = np.sum(np.array(self._world.shape)**2)
+        max_dist = np.sqrt(np.sum(np.array(self._world.shape)**2))
         reward = (
+            # The base term allows us to set small negative/positive rewards for continuing to play
+            #   Negative encourages quickly finishing the task; positive, staying active in the world.
+            (  self._reward_weight['base'] ) +
             # Use a default=1 on distance_to_incomplete
             #   so that agent optimizes that part all blocks are complete
             #   Avoids possibility of dancing around the last incomplete block to gain reward
-            (  self._reward_weight['distance'] * (1 - abs((1/max_dist) - self.distance_to_incomplete(default=1))**0.4) ) +
+            (  self._reward_weight['distance'] * (1 - abs(1 - (self.distance_to_incomplete(default=1) / max_dist))**0.4) ) +
             (  self._reward_weight['facing_incomplete'] * (self.facing_incomplete()) ) +
             # Reward actually placing necessary blocks, and penalize placing superfluous ones
             #   This also penalizes removing necessary blocks, and rewards removing superfluous ones

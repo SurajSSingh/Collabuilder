@@ -3,8 +3,9 @@
 # The agent is reward for placing a block on this square, and mildly punished for any other action.
 # The idea here is to train an agent how to place a block, as well as to experiment with 
 
+import keras
 from keras.models import Sequential, clone_model
-from keras.layers import Dense, InputLayer, Flatten, Reshape, Permute, Conv3D, MaxPooling3D
+from keras.layers import Dense, InputLayer
 from keras.utils import to_categorical, Sequence
 from keras.callbacks import LambdaCallback
 import numpy as np
@@ -20,7 +21,7 @@ import os
 import json
 
 from world_model import WorldModel
-from display import Display, RewardsPlot
+from display import Display, LivePlot
 
 if sys.version_info[0] == 2:
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)  # flush print output immediately
@@ -28,7 +29,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME = 'bp_simplified'
-VERSION_NUMBER  = '1.3'
+VERSION_NUMBER  = '2.0'
 CONFIG_FILE = MODEL_NAME + '_v' + VERSION_NUMBER
 cfg = lambda *args: get_config(CONFIG_FILE, *args)
 
@@ -165,8 +166,10 @@ class RLearner:
             try:
                 self._history = np.load(history_file)
             except IOError:
-                print('No history file. Could not train on history.')
+                print('No history file.')
+                self._valid = False
                 return
+            self._valid = True
             self._batch_size     = batch_size
             self._batches        = batches
             self._discount       = discount
@@ -175,6 +178,10 @@ class RLearner:
             self.on_epoch_end()
 
         def on_epoch_end(self):
+            # TODO: sometimes, the history files are too large to pull into memory entirely.
+            #   However, it's really slow to leave them on the disk and always be reading from the disk.
+            #   Need some way to eat the cost of pulling a chunk of data out of history in, once,
+            #   then generate a bunch of samples off of it.
             print('Generating training data...')
             # First, generate all the indices for all the batches
             idx = np.random.randint(self._history_length, size=(self._batches * self._batch_size))
@@ -190,6 +197,9 @@ class RLearner:
                 )
             print('Generated.')
 
+        def valid(self):
+            return self._valid
+
         def __len__(self):
             return self._batches
 
@@ -203,25 +213,19 @@ class RLearner:
         self._save_history = save_history
         self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
-        self._prediction_network = Sequential([
-            # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-            InputLayer(input_shape=(2, *BLUEPRINT.shape, len(INPUTS))),
-            # Reduce incoming 6D tensor to 5D by merging channels (dim 1) and one-hot (dim 5):
-            Permute((1, 5, 2, 3, 4)),
-            Reshape((-1, *BLUEPRINT.shape)),
-            # Convolve each input, treating the blueprint and world state as separate channels
-            Conv3D(8, (3, 3, 3), padding="same", data_format="channels_first", activation="relu"),
-            Conv3D(8, (3, 3, 3), padding="same", data_format="channels_first", activation="relu"),
-            # max-pool features together a bit:
-            MaxPooling3D(pool_size=BLUEPRINT.shape, data_format="channels_first"),
-            # Flatten, ready for fully-connected layers:
-            Flatten(),
-            # Do some thinking:
-            Dense(16, activation='relu'),
-            # Output one-hot encoded action
-            Dense(len(ACTIONS), activation='softmax')
-        ])
-        self._prediction_network.compile(loss='mse', optimizer='adam', metrics=['mae'])
+        self._prediction_network = Sequential()
+        # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
+        self._prediction_network.add(InputLayer(input_shape=(2, *BLUEPRINT.shape, len(INPUTS))))
+
+        # Now, load layers from config file and build them out:
+        for layer_str in cfg('agent', 'layers'):
+            # Don't try to process comments
+            if layer_str.lstrip()[0] != '#':
+                # Dangerous to use eval, but convenient for our purposes.
+                self._prediction_network.add(eval(layer_str))
+        # Output one-hot encoded action
+        self._prediction_network.add(Dense(len(ACTIONS), activation='softmax'))
+        self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_epoch = 0
         self._prediction_network,self.start_epoch = std_load(self._name, self._prediction_network)
         self._target_network = clone_model(self._prediction_network)
@@ -296,23 +300,28 @@ class RLearner:
             np.savez(self._history_file, **{k:np.concatenate([old_history[k], v]) for k,v in new_history.items()})
 
     def train_on_history(self, batch_size=1000, batches=100, epochs=10):
-        print('Training on history...')
 
         def update_pn(*args, **kwargs):
             self._iters_since_target_update += batch_size
             self._maybe_update_pn()
 
-        self._prediction_network.fit_generator(RLearner.HistoryGenerator(
+        history_generator = RLearner.HistoryGenerator(
                 history_file   = self._history_file,
                 batch_size     = batch_size,
                 batches        = batches,
                 discount       = self._discount,
                 target_network = self._target_network
-                ),
-            epochs=epochs,
-            callbacks=[LambdaCallback(on_batch_end=update_pn)]
             )
-        print('Finished training on history.')
+
+        if history_generator.valid():
+            print('Training on history...')
+            self._prediction_network.fit_generator(history_generator,
+                epochs=epochs,
+                callbacks=[LambdaCallback(on_batch_end=update_pn)]
+                )
+            print('Finished training on history.')
+        else:
+            print('Skipped history training.')
 
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
@@ -353,6 +362,7 @@ def run_mission(model, display=None):
     total_reward = 0
     current_r = 0
 
+    start = time.time()
     # Loop until mission ends
     while (world_state.is_mission_running and
            world_model.is_mission_running()):
@@ -374,12 +384,14 @@ def run_mission(model, display=None):
             elif world_state.is_mission_running:
                 AGENT_HOST.sendCommand( action )
         time.sleep(ACTION_DELAY)
+    end = time.time()
 
     model.mission_ended()
+
     print()
     print("Mission ended")
 
-    return total_reward
+    return total_reward, end - start
 
 def run_simulated_mission(model, display=None, use_delays=False):
     print("Simulated mission running.")
@@ -391,6 +403,7 @@ def run_simulated_mission(model, display=None, use_delays=False):
 
     while (ticks_left > 0 and
            world_model.is_mission_running()):
+        ticks_left -= 1
         current_r = world_model.reward()
         action = model.act(current_r, world_model.get_observation())
         if display is not None:
@@ -408,11 +421,12 @@ def run_simulated_mission(model, display=None, use_delays=False):
     model.mission_ended()
     print("Simulated mission ended")
 
-    return total_reward
+    return total_reward, (MAX_EPISODE_TIME - (ticks_left/5))
 
 def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, plot_rewards=False):
     if plot_rewards:
-        rp = RewardsPlot()
+        rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward')
+        lp = LivePlot('Episode Length during Training', '# Episodes', 'Length (s)')
 
     best_reward = None
     for epoch_num in range(initial_epoch, epochs):
@@ -420,9 +434,11 @@ def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, p
             build_world(training=True)
         print('Epoch {}/{}'.format(epoch_num, epochs))
         print('Current Epsilon: {}'.format(model._epsilon))
-        reward = (run_simulated_mission(model, display=display) if simulated else run_mission(model, display=display))
-        print('Total reward:', reward)
+        reward,length = (run_simulated_mission(model, display=display) if simulated else run_mission(model, display=display))
+        print('Total reward   :', reward)
+        print('Episode length :', length)
         rp.add(reward)
+        lp.add(length)
         if best_reward is None or reward > best_reward or epoch_num % SAVE_FREQ == 0:
             model.save('epoch_{:09d}.reward_{:03d}'.format(epoch_num, int(reward)))
         if best_reward is None or reward > best_reward:
@@ -441,15 +457,15 @@ if __name__ == '__main__':
 
     build_world(training=set_training)
     model = RLearner(save_history=SAVE_HISTORY)
-    if TRAIN_ON_HISTORY:
-        model.train_on_history(
-            batch_size = HISTORY_BATCH_SIZE,
-            batches    = HISTORY_BATCHES,
-            epochs     = HISTORY_EPOCHS
-        )
     disp  = (Display(model) if set_display else None)
     if set_training:
-        pr = ask_yn('Plot rewards?')
+        pr = ask_yn('Plot stats?')
+        if TRAIN_ON_HISTORY:
+            model.train_on_history(
+                batch_size = HISTORY_BATCH_SIZE,
+                batches    = HISTORY_BATCHES,
+                epochs     = HISTORY_EPOCHS
+            )
         train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated, plot_rewards=pr)
         print('Training complete.\n\n')
 
@@ -462,11 +478,12 @@ if __name__ == '__main__':
         disp = Display(model)
     print('Demonstration running...')
     if set_simulated:
-        reward = run_simulated_mission(model, display=disp, use_delays=True)
+        reward,length = run_simulated_mission(model, display=disp, use_delays=True)
     else:
-        reward = run_mission(model, display=disp)
+        reward,length = run_mission(model, display=disp)
 
-    print('Collected reward: {}'.format(reward))
+    print('Total reward   : {}'.format(reward))
+    print('Episode length : {}'.format(reward))
     print('Demonstration complete.')
 
 
