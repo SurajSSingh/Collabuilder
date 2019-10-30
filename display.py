@@ -37,22 +37,35 @@ class Display:
 
         self._fig.canvas.flush_events()
 
-class RewardsPlot:
-    def __init__(self):
+class LivePlot:
+    def __init__(self, title, xlabel, ylabel):
         self._data = []
         self._fig = plt.figure()
         self._axis = self._fig.add_subplot(111)
         self._line, = self._axis.plot([], [])
 
-        self._fig.suptitle('Episode Reward during Training')
-        self._axis.set_xlabel('Episode #')
-        self._axis.set_ylabel('Total Reward')
+        self._fig.suptitle(title)
+        self._axis.set_xlabel(xlabel)
+        self._axis.set_ylabel(ylabel)
+
+        self._temp = []
+        self._downsample_factor = 1
+        self._max_data = 600
 
         self._fig.show()
 
     def add(self, r):
+        self._temp.append(r)
+        if len(self._temp) >= self._downsample_factor:
+            self._add(np.mean(self._temp))
+            self._temp.clear()
+        if len(self._data) >= self._max_data:
+            self._downsample_factor *= 2
+            self._data = list(np.reshape(self._data, (-1, 2)).mean(axis=1))
+
+    def _add(self, r):
         self._data.append(r)
-        self._line.set_xdata(np.arange(len(self._data)))
+        self._line.set_xdata(np.arange(0,len(self._data)*self._downsample_factor,self._downsample_factor))
         self._line.set_ydata(self._data)
 
         self._axis.relim()
