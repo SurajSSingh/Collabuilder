@@ -1,0 +1,42 @@
+{
+    "training": {
+        "num_episodes": 2000,
+        "max_episode_time": 20,
+        "initial_epsilon": 0.5,
+        "final_epsilon": 0.01,
+        "overclock_factor": 5,
+        "save_history": false,
+        "train_on_history": false,
+        "history": {
+            "batch_size": 512,
+            "batches": 32,
+            "epochs": 32
+        },
+        "reward_weight": {
+            "distance": 0.1,
+            "facing_incomplete": 0.1,
+            "place_necessary": 0.5,
+            "place_superfluous": -0.5,
+            "attack_floor": -1,
+            "leave_arena": -1,
+            "mission_complete": 1
+        }
+    },
+    "arena": {
+        "width": 5,
+        "height": 1,
+        "length": 5,
+        "anchor": {
+            "x": 0,
+            "y": 5,
+            "z": 0
+        },
+        "offset": {
+            "x": 0.5,
+            "y": 0,
+            "z": 0.5
+        }
+    },
+    "inputs": ["air", "stone", "agent"],
+    "actions": ["jumpmove 1", "turn 1", "turn -1", "use", "attack"]
+}
