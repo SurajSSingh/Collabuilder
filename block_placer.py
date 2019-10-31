@@ -1,7 +1,6 @@
-# This is the most basic version of the building task.
-# A "blueprint" with only one square set for building is given to the agent.
-# The agent is reward for placing a block on this square, and mildly punished for any other action.
-# The idea here is to train an agent how to place a block, as well as to experiment with 
+# This is now the core script for the project.
+# It contains the logic for training models, running missions, etc.,
+# as well as the basic CLI for executing those tasks.
 
 import keras
 from keras.models import Sequential, clone_model
@@ -29,7 +28,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_NAME = 'bp_simplified'
-VERSION_NUMBER  = '2.0'
+VERSION_NUMBER  = '2.2'
 CONFIG_FILE = MODEL_NAME + '_v' + VERSION_NUMBER
 cfg = lambda *args: get_config(CONFIG_FILE, *args)
 
@@ -423,12 +422,11 @@ def run_simulated_mission(model, display=None, use_delays=False):
 
     return total_reward, (MAX_EPISODE_TIME - (ticks_left/5))
 
-def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, plot_rewards=False):
-    if plot_rewards:
+def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, plot_stats=False):
+    if plot_stats:
         rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward')
         lp = LivePlot('Episode Length during Training', '# Episodes', 'Length (s)')
 
-    best_reward = None
     for epoch_num in range(initial_epoch, epochs):
         if epoch_num % 10 == 0:
             build_world(training=True)
@@ -439,10 +437,6 @@ def train_model(model, epochs, initial_epoch=0, display=None, simulated=False, p
         print('Episode length :', length)
         rp.add(reward)
         lp.add(length)
-        if best_reward is None or reward > best_reward or epoch_num % SAVE_FREQ == 0:
-            model.save('epoch_{:09d}.reward_{:03d}'.format(epoch_num, int(reward)))
-        if best_reward is None or reward > best_reward:
-            best_reward = reward
     model.save('epoch_{:09d}.reward_{:03d}'.format(epoch_num, int(reward)))
 
 if __name__ == '__main__':
@@ -466,7 +460,7 @@ if __name__ == '__main__':
                 batches    = HISTORY_BATCHES,
                 epochs     = HISTORY_EPOCHS
             )
-        train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated, plot_rewards=pr)
+        train_model(model, NUM_EPISODES, initial_epoch=model.start_epoch, display=disp, simulated=set_simulated, plot_stats=pr)
         print('Training complete.\n\n')
 
     input('Press ENTER to demonstrate...')
