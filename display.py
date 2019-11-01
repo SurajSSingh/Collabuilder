@@ -72,3 +72,9 @@ class LivePlot:
         self._axis.autoscale_view()
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
+
+    def add_sep(self):
+        self._axis.axvline(
+            (len(self._data) - 1)*self._downsample_factor,
+            linestyle='--'
+        )

@@ -39,8 +39,7 @@ def std_load(name, model=None):
         return model, 0
     else:
         fp    = filepaths[i-1]
-        epoch = (int(re.match('.*\\.epoch_([0-9]+)', fp).group(1))
-            if ask_yn('Use saved epoch number?') else 0)
+        epoch = int(re.match('.*\\.epoch_([0-9]+)', fp).group(1))
         print("Loading", fp)
         if model is None:
             return (keras.models.load_model(fp), epoch)

@@ -2,20 +2,19 @@ import numpy as np
 from utils import get_config
 
 class WorldModel:
-    def __init__(self, blueprint, cfg_file, simulated=False):
-        self._cfg      = (lambda *args: get_config(cfg_file, *args))
+    def __init__(self, blueprint, cfg, simulated=False):
+        self._cfg      = cfg
         self._offset_x = self._cfg('arena', 'offset', 'x')
         self._offset_y = self._cfg('arena', 'offset', 'y')
         self._offset_z = self._cfg('arena', 'offset', 'z')
-        self._arena_width  = self._cfg('arena', 'width')
-        self._arena_height = self._cfg('arena', 'height')
-        self._arena_length = self._cfg('arena', 'length')
+        self._arena_width   = self._cfg('arena', 'width')
+        self._arena_height  = self._cfg('arena', 'height')
+        self._arena_length  = self._cfg('arena', 'length')
         self._reward_weight = self._cfg('training', 'reward_weight')
-        self._cfg_file = cfg_file
         self._simulated = simulated
-        self._bp       = blueprint
-        self._str_type = '<U{}'.format(max(len(s) for s in self._cfg('inputs')))
-        self._rot_bp   = self._bp
+        self._bp        = blueprint
+        self._str_type  = '<U{}'.format(max(len(s) for s in self._cfg('inputs')))
+        self._rot_bp    = self._bp
         self._old_num_complete    = 0
         self._old_num_incomplete  = 0
         self._old_num_superfluous = 0
@@ -37,8 +36,7 @@ class WorldModel:
 
     def copy(self):
         '''Makes a deep-copy of the world model.'''
-        output = WorldModel(self._bp, self._cfg_file, self._simulated)
-        output._cfg_file              = self._cfg_file
+        output = WorldModel(self._bp, self._cfg, self._simulated)
         output._simulated             = self._simulated
         output._arena_height          = self._arena_height
         output._arena_length          = self._arena_length
