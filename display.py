@@ -40,19 +40,22 @@ class Display:
 class LivePlot:
     def __init__(self, title, xlabel, ylabel):
         self._data = []
-        self._fig = plt.figure()
-        self._axis = self._fig.add_subplot(111)
-        self._line, = self._axis.plot([], [])
-
-        self._fig.suptitle(title)
-        self._axis.set_xlabel(xlabel)
-        self._axis.set_ylabel(ylabel)
-
         self._temp = []
         self._downsample_factor = 1
         self._max_data = 600
 
-        self._fig.show()
+        self._fig = plt.figure()
+        self._axis = self._fig.add_subplot(111)
+        self._fig.canvas.draw()
+
+        self._line, = self._axis.plot([], [])
+        self._fig.suptitle(title)
+        self._axis.set_xlabel(xlabel)
+        self._axis.set_ylabel(ylabel)
+
+        self._bg = self._fig.canvas.copy_from_bbox(self._axis.bbox)
+
+        self._fig.canvas.flush_events()
 
     def add(self, r):
         self._temp.append(r)
@@ -70,7 +73,9 @@ class LivePlot:
 
         self._axis.relim()
         self._axis.autoscale_view()
-        self._fig.canvas.draw()
+        self._fig.canvas.restore_region(self._bg)
+        self._axis.draw_artist(self._line)
+        self._fig.canvas.blit(self._axis.bbox)
         self._fig.canvas.flush_events()
 
     def add_sep(self):

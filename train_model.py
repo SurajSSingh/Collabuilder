@@ -49,4 +49,4 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     if curriculum.is_completed():
         print("Agent completed curriculum.")
     else:
-        print('Agent was unable to complete curriculum lesson {}.'.format(currciulum.lesson_num()))
+        print('Agent was unable to complete curriculum lesson {}.'.format(curriculum.lesson_num()))
