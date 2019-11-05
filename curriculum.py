@@ -84,6 +84,10 @@ def _get_lesson_function(name):
         return dummy_1
     elif name == 'dummy_2':
         return dummy_2
+    elif name == 'lessonA':
+        return lessonA
+    elif name == 'lessonB':
+        return lessonB
 
     # Final case, if nothing matches
     raise ValueError("'{}' is not a recognized function.".format(name))
@@ -106,4 +110,25 @@ def dummy_2(arena_width, arena_height, arena_length, foo, bar, **kwargs):
     start_x = np.random.randint(arena_width)
     start_z = np.random.randint(arena_length)
     return (bp, (start_x, 0, start_z), 0.85)
+
+def lessonA(arena_width, arena_height, arena_length, **kwargs):
+    # 1 block, placed randomly in the arena, with the agent nearby (within a k unit radius)
+    MAX_REWARD = 1
+    BUFFER = .15
+    k = kwargs['k']
+    center_x = arena_width//2
+    center_z = arena_length//2
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    bp[np.random.randint(low=arena_width-k,high=arena_width+k+1)][0][np.random.randint(low=arena_length-k,high=arena_length+k+1)] = 'stone'
+    return (bp, (center_x, 0, center_z), MAX_REWARD-BUFFER)
+
+def lessonB(arena_width, arena_height, arena_length, **kwargs):
+    # 1 block, placed randomly in the arena, with the agent placed randomly in the arena as well
+    MAX_REWARD = 1
+    BUFFER = .15
+    start_x = np.random.randint(arena_width)
+    start_z = np.random.randint(arena_length)
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    bp[np.random.randint(arena_width)][0][np.random.randint(arena_length)] = 'stone'
+    return (bp, (start_x, 0, start_z), MAX_REWARD-BUFFER)
 
