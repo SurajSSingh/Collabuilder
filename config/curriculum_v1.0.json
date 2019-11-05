@@ -58,6 +58,39 @@
                     "foo": 42,
                     "bar": false
                 }
+            },
+            {
+                "name": "lessonA",
+                "params": {
+                    "k": 2
+                }
+            },
+            {
+                "name": "lessonB",
+                "params": {}
+            },
+
+
+
+            {
+                "name": "lessonC",
+                "params": {
+                  "n_blocks": 3
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "random"
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "floor",
+                  "floor_size_x": 2
+                  "floor_size_z": 2
+                }
             }
         ]
     },
