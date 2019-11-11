@@ -8,9 +8,9 @@
 # Training strategy: Reinforcement Learning using batches of recent history
 #   epsilon-greedy exploration with exponential decay on epsilon
 
-from keras.models import Sequential
-from keras.layers import Dense, InputLayer, Flatten
-from keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, InputLayer, Flatten
+from tensorflow.keras.utils import to_categorical
 import numpy as np
 from utils import chance, std_load
 import random

@@ -1,4 +1,4 @@
-import keras
+import tensorflow.keras as keras
 import numpy as np
 import glob
 import re
@@ -65,12 +65,13 @@ def ask_yn(question):
         s = input(question + ' (y/n) ').lower()
     return s in {'yes', 'y'}
 
-def ask_int(prompt, min_val=None, max_val=None):
+def ask_int(prompt, min_val=None, max_val=None, default=None):
     '''Asks user for an integer, between min_val and max_val, inclusive.'''
     i = None
     while i is None:
         try:
-            i = int(input(prompt))
+            s = input(prompt + ('' if default is None else '({}) '.format(default)))
+            i = default if (default is not None) and (s == "") else int(s)
             if (min_val is not None and i < min_val) or (max_val is not None and i > max_val):
                 raise ValueError()
         except ValueError:

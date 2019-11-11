@@ -46,19 +46,35 @@
         "max_lesson_length": 2000,
         "lessons": [
             {
-                "name": "dummy_1",
+                "name": "lessonA",
                 "params": {
-                    "p1": "value uno",
-                    "p2": "value dos"
+                    "k": 2
                 }
             },
             {
-                "name": "dummy_2",
+                "name": "lessonB",
+                "params": {}
+            },
+            {
+                "name": "lessonC",
                 "params": {
-                    "foo": 42,
-                    "bar": false
+                  "n_blocks": 3
                 }
-            }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "random"
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "floor",
+                  "floor_size_x": 2,
+                  "floor_size_z": 2
+                }
+            },
         ]
     },
     "arena": {

@@ -6,9 +6,9 @@
 # Problem is a version of the NChain Gym environment, inspired by this article:
 #   https://adventuresinmachinelearning.com/reinforcement-learning-tutorial-python-keras/
 
-from keras.models import Sequential
-from keras.layers import Dense, InputLayer
-from keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras.utils import to_categorical
 import numpy as np
 from utils import chance
 
