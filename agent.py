@@ -1,12 +1,20 @@
 import numpy as np
-import keras
+import tensorflow as tf
+import tensorflow.keras as keras
+import multiprocessing
 
-from keras.models import Sequential, clone_model
-from keras.layers import Dense, InputLayer
-from keras.utils import to_categorical, Sequence
-from keras.callbacks import LambdaCallback
+# from tensorflow.keras import backend as K
+from tensorflow.keras.models import Sequential, clone_model
+from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras.utils import to_categorical, Sequence
+from tensorflow.keras.callbacks import LambdaCallback
 
-from utils import std_load, chance
+from utils import std_load, chance, ask_int
+
+tf.config.threading.set_intra_op_parallelism_threads(
+    ask_int('Number of intra-op threads: ', min_val=1, default=multiprocessing.cpu_count()))
+tf.config.threading.set_inter_op_parallelism_threads(
+    ask_int('Number of inter-op threads: ', min_val=1, default=2))
 
 class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
@@ -81,11 +89,14 @@ class RLearner:
             # Don't try to process comments
             if layer_str.lstrip()[0] != '#':
                 # Dangerous to use eval, but convenient for our purposes.
-                self._prediction_network.add(eval(layer_str.format(
+                new_layer = eval(layer_str.format(
                         arena_width  = cfg('arena', 'width'),
                         arena_height = cfg('arena', 'height'),
-                        arena_length = cfg('arena', 'length')
-                    )))
+                        arena_length = cfg('arena', 'length'),
+                        num_inputs   = len(cfg('inputs')),
+                        num_actions  = len(cfg('actions'))
+                    ))
+                self._prediction_network.add(new_layer)
         # Output one-hot encoded action
         self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
