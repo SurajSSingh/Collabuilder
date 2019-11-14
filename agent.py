@@ -124,6 +124,9 @@ class RLearner:
             self._target_network.set_weights(self._prediction_network.get_weights())
             self._iters_since_target_update = 0
 
+    def name(self):
+        return self._name
+
     def act(self, last_reward, next_observation):
         # Update model based on last_reward:
 

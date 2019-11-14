@@ -1,3 +1,6 @@
+checkpoint/
+stats/
+__pycache__/
 
 *.so
 

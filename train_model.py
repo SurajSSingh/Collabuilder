@@ -4,10 +4,34 @@ from run_mission import Mission, run_mission
 from utils import get_config
 
 def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False):
+    stats_filename = 'stats/' + model.name() + '.csv'
+    stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
+
+    try:
+        stats_data = np.genfromtxt(stats_filename,
+            dtype=['int','int','float','float'],
+            delimiter=',',
+            names=True)[:initial_episode]
+        rp_data = stats_data['Episode_Reward']
+        lp_data = stats_data['Episode_Length']
+        separators = np.where(np.diff(stats_data['Lesson_Number']))[0]
+        np.savetxt(stats_filename, stats_data, 
+            fmt='%d,%d,%f,%f',
+            header=stats_header,
+            comments='')
+        del stats_data
+        new_file = False
+    except OSError: # File not found
+        rp_data = []
+        lp_data = []
+        separators = []
+        new_file = True
+        
     if plot_stats:
         from display import LivePlot
-        rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward')
-        lp = LivePlot('Episode Length during Training', '# Episodes', 'Length (s)')
+        rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward', start_data = rp_data, separators=separators)
+        lp = LivePlot('Episode Length during Training', '# Episodes', 'Length (s)', start_data = lp_data, separators=separators)
+    del rp_data, lp_data, separators
 
     def reset_fn():
         model.reset_learning_params()
@@ -21,30 +45,39 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     max_episode_time = cfg('training', 'max_episode_time')
     save_frequency   = cfg('training', 'save_frequency')
 
-    bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
-    while bp is not None:
-        episode_num += 1
-        mission = Mission(
-                blueprint        = bp,
-                start_position   = start_pos,
-                training         = True,
-                action_delay     = action_delay,
-                max_episode_time = max_episode_time,
-                simulated        = simulated,
-                display          = display
-            )
-        print('Lesson {}, Episode {}'.format(curriculum.lesson_num(), episode_num))
-        mission_stats = run_mission(model, mission, cfg)
-        last_reward = mission_stats.reward
-        print('Total reward   :', mission_stats.reward)
-        print('Episode length :', mission_stats.length)
-        if plot_stats:
-            rp.add(mission_stats.reward)
-            lp.add(mission_stats.length)
-        if episode_num % save_frequency == 0:
-            model.save('epoch_{:09d}'.format(episode_num))
+    with open(stats_filename, 'a') as stats_file:
+        if new_file:
+            print(stats_header, file=stats_file, flush=True)
         bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
-    model.save('epoch_{:09d}'.format(episode_num))
+        while bp is not None:
+            episode_num += 1
+            mission = Mission(
+                    blueprint        = bp,
+                    start_position   = start_pos,
+                    training         = True,
+                    action_delay     = action_delay,
+                    max_episode_time = max_episode_time,
+                    simulated        = simulated,
+                    display          = display
+                )
+            print('Lesson {}, Episode {}'.format(curriculum.lesson_num(), episode_num))
+            mission_stats = run_mission(model, mission, cfg)
+            last_reward = mission_stats.reward
+            print('Total reward   :', mission_stats.reward)
+            print('Episode length :', mission_stats.length)
+            if plot_stats:
+                rp.add(mission_stats.reward)
+                lp.add(mission_stats.length)
+            print('{},{},{},{}'.format(
+                    curriculum.lesson_num(),
+                    episode_num,
+                    mission_stats.reward,
+                    mission_stats.length),
+                file=stats_file, flush=True)
+            if episode_num % save_frequency == 0:
+                model.save('epoch_{:09d}'.format(episode_num))
+            bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
+        model.save('epoch_{:09d}'.format(episode_num))
 
     if curriculum.is_completed():
         print("Agent completed curriculum.")

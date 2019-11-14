@@ -38,8 +38,8 @@ class Display:
         self._fig.canvas.flush_events()
 
 class LivePlot:
-    def __init__(self, title, xlabel, ylabel):
-        self._data = []
+    def __init__(self, title, xlabel, ylabel, start_data=[], separators=[]):
+        self._data = list(start_data)
         self._temp = []
         self._downsample_factor = 1
         self._max_data = 600
@@ -57,12 +57,23 @@ class LivePlot:
 
         self._fig.canvas.flush_events()
 
+        if len(self._data) > 0:
+            # pop the last data point and add it,
+            # to trigger the downsampling as necessary
+            # and plot the data as it stands
+            last = self._data.pop()
+            self.add(last)
+
+        for s in separators:
+            self._axis.axvline((s - 1), linestyle='--')
+
+
     def add(self, r):
         self._temp.append(r)
         if len(self._temp) >= self._downsample_factor:
             self._add(np.mean(self._temp))
             self._temp.clear()
-        if len(self._data) >= self._max_data:
+        while len(self._data) >= self._max_data:
             self._downsample_factor *= 2
             self._data = list(np.reshape(self._data, (-1, 2)).mean(axis=1))
 
