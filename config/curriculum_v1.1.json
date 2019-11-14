@@ -48,6 +48,24 @@
             {
                 "name": "lessonA",
                 "params": {
+                    "k": 7
+                }
+            },
+            {
+                "name": "lessonA",
+                "params": {
+                    "k": 6
+                }
+            },
+            {
+                "name": "lessonA",
+                "params": {
+                    "k": 4
+                }
+            },
+            {
+                "name": "lessonA",
+                "params": {
                     "k": 2
                 }
             },
@@ -62,9 +80,39 @@
                 }
             },
             {
+                "name": "lessonC",
+                "params": {
+                  "n_blocks": 6
+                }
+            },
+            {
+                "name": "lessonC",
+                "params": {
+                  "n_blocks": 9
+                }
+            },
+            {
                 "name": "lessonD",
                 "params": {
-                  "organized": "random"
+                  "organized": "random",
+                  "n_blocks": 5,
+                  "k":3
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "random",
+                  "n_blocks": 7,
+                  "k":4
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "random",
+                  "n_blocks": 9,
+                  "k":5
                 }
             },
             {
@@ -74,13 +122,37 @@
                   "floor_size_x": 2,
                   "floor_size_z": 2
                 }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "floor",
+                  "floor_size_x": 3,
+                  "floor_size_z": 3
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "floor",
+                  "floor_size_x": 4,
+                  "floor_size_z": 4
+                }
+            },
+            {
+                "name": "lessonD",
+                "params": {
+                  "organized": "floor",
+                  "floor_size_x": 5,
+                  "floor_size_z": 5
+                }
             }
         ]
     },
     "arena": {
-        "width": 5,
-        "height": 1,
-        "length": 5,
+        "width": 15,
+        "height": 5,
+        "length": 15,
         "anchor": {
             "x": 0,
             "y": 5,

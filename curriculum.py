@@ -120,7 +120,7 @@ def lessonA(arena_width, arena_height, arena_length, **kwargs):
     center_x = arena_width//2
     center_z = arena_length//2
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-    bp[np.random.randint(low=arena_width-k,high=arena_width+k+1)][0][np.random.randint(low=arena_length-k,high=arena_length+k+1)] = 'stone'
+    bp[np.random.randint(low=0+k,high=arena_width-k+1)][0][np.random.randint(low=0+k,high=arena_length-k+1)] = 'stone'
     return (bp, (center_x, 0, center_z), MAX_REWARD-BUFFER)
 
 def lessonB(arena_width, arena_height, arena_length, **kwargs):
@@ -153,15 +153,15 @@ def _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z,
         set_of_blocks.add((block_x,block_z))
     return set_of_blocks
 
-def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, num_of_block, org_type=None, floor_size=None, debug=False):
+def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, k_val, num_of_block, org_type=None, floor_size=None, debug=False):
     set_of_blocks = set()
     ## Creates an organized arrangement of block
     ## types of arrangement include: lines, corners, floor
     org_array = ["xline","zline","blcorner","brcorner", "tlcorner","trcorner"]
     # Create and add the starting location
     # (make sure there is no conflict with the agent postion)
-    block_x = np.random.randint(0,arena_width)
-    block_z = np.random.randint(0,arena_length)
+    block_x = np.random.randint(0+k_val,arena_width-k_val)
+    block_z = np.random.randint(0+k_val,arena_length-k_val)
     if block_x == agent_pos_x:
         if block_x + 1 == arena_width:
             block_x-=1
@@ -244,8 +244,9 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
     if 'organized' in kwargs:
         fsx = kwargs['floor_size_x'] if 'floor_size_x' in kwargs else (number_of_block+1)//2
         fsz = kwargs['floor_size_z'] if 'floor_size_z' in kwargs else (number_of_block+1)//2
-        positions = _organized_block_placement(arena_width,arena_length, start_x, start_z, number_of_block,
-        org_type=kwargs['organized'], floor_size=(fsx,fsz), debug=True)
+        k_value = kwargs['k'] if 'k' in kwargs else 0
+        positions = _organized_block_placement(arena_width,arena_length, start_x, start_z, k_value, number_of_block,
+        org_type=kwargs['organized'], floor_size=(fsx,fsz), debug=False)
         for pos in positions:
             bp[pos[0]][0][pos[1]] = 'stone'
     else:
@@ -273,7 +274,7 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
       print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
       print('blueprint:\n{}'.format(bp))
 
-    return (bp, (start_x,0,start_z), buff_opt)
+    return (bp, (start_x,0,start_z), 0)
 
 def lessonS(arena_width, arena_height, arena_length, **kwargs):
     ## Create a single tower lesson
@@ -331,4 +332,4 @@ def lessonS(arena_width, arena_height, arena_length, **kwargs):
       print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
       print('blueprint:\n{}'.format(bp))
 
-    return (bp, (start_x,0,start_z), buff_opt)
+    return (bp, (start_x,0,start_z), 0)

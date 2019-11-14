@@ -42,7 +42,7 @@
     },
     "arena": {
         "width": 15,
-        "height": 1,
+        "height": 5,
         "length": 15,
         "anchor": {
             "x": 0,
