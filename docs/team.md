@@ -2,10 +2,6 @@
 layout: default
 title:  Team
 ---
-
-# {{ Team Collabuilder }}
-
-
 ## Aditya Choksi
 ***UCI Net ID***: adchoksi
 
