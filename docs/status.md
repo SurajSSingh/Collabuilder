@@ -1,3 +1,8 @@
+---
+layout: default
+title:  Status
+---
+
 ## Project Summary: 
 
 Our project is to train a Minecraft agent to be able to build 3-dimensional structures based on a blueprint that is input as a 3-dimensional array of block types. We will train the agent using a neural network and reinforcement learning. We will use neural network models from the keras library. Furthermore, we will also use curriculum learning to allow the agent to be trained more efficiently and effectively. Ideally, the agent should be able to build the input blueprint with perfect accuracy, as fast as possible. Initially we had hoped that the agent would be able to construct ceilings for the buildings, but our current action space makes this near impossible, so we are taking this goal off the table for now. We have developed a restricted Minecraft simulator that emulates the agents actions, which allows us to train the agent much more quickly by avoiding the overhead of running Minecraft. Another subgoal that we currently have is to develop a model tester, that will allow us to automate the process of trying different curriculums and hyper-parameters for our neural network. Ideally, we will scale our project up to multiple agents, but for now we are focused on getting one agent to perform very well. Also, we will attempt to add more complexity to the blueprint through different materials and structure types if time allows.
