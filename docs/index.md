@@ -9,12 +9,12 @@ title:  Home
 One of the most beloved aspects of Minecraft is the ability to create breathtaking mansions, secret hideouts, and more. All of the costs and physics of the world no longer hold the player back. Although it is incredibly fun to conceptualize different structures to build, the design is only the beginning. The player must take on the tedious and time-consuming task of building the entire thing block by block. Here is where our project Collabuilder comes to the rescue. Imagine having a full construction squad consisting of smart AI that work together to completely build out any blueprint you provide. After doing the hard work of creating your design, you can sit back, grab a drink, and watch them get busy! On our project website, you can learn how this is possible, what kind of hurdles we had to overcome, and see how the project progressed over time. 
 
 ## The Basics
-
+Our project is built using the Malmo Platform provided by Microsoft which allows developers like us to create cool AI projects for Minecraft. The "brains" of our AI agent is a convulutional neural network that we used from the Keras library. We train our agent by using a method call "reinforcement learning" where we simply allow the agent to perform actions, and reward it when it does something we like, and punish it when it does something wrong. Now, to understand, how the reward system works, we need to talk a deeper look into how the agent works. We initialize a mission by placing the agent in the world and giving it a blueprint, which is simply a 3D array of different block types. The agent has a limited set of actions that it can use to build out this blueprint: "move/jump forward", "turn left", "turn right", "place block", and "remove block".
 
 ## Training the agent
 
 
-If you want to really dive deep into our project, below are links to the source code and detailed technical reports:
+If you want to a deeper dive into our project, below are links to the source code and detailed technical reports:
 
 ### Source code: 
 https://github.com/SurajSSingh/Collabuilder/
