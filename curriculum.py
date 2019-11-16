@@ -195,8 +195,12 @@ def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos
     org_array = ["xline","zline","blcorner","brcorner", "tlcorner","trcorner"]
     # Create and add the starting location
     # (make sure there is no conflict with the agent postion)
-    block_x = np.random.randint(0+k_val,arena_width-k_val)
-    block_z = np.random.randint(0+k_val,arena_length-k_val)
+    if floor_size != None:
+        block_x = np.random.randint(0,arena_width-(k_val*2))
+        block_z = np.random.randint(0,arena_length-(k_val*2))
+    else:
+        block_x = np.random.randint(0+k_val,arena_width-k_val)
+        block_z = np.random.randint(0+k_val,arena_length-k_val)
     if block_x == agent_pos_x:
         if block_x + 1 == arena_width:
             block_x-=1
@@ -253,7 +257,7 @@ def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos
     elif ot == "floor" and floor_size != None:
         for x_val in range(0,floor_size[0]):
             for z_val in range(0,floor_size[1]):
-                set_of_blocks.add(((block_x+z_val)%arena_width,(block_z+x_val)%arena_height))
+                set_of_blocks.add(((block_x+z_val)%arena_width,(block_z+x_val)%arena_length))
     else:
         # Could not find organization type, so just do random
         return _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, num_of_block)
@@ -293,12 +297,12 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
 
     # Find most optimal route
     # Currently hardcoded cost
-    movement_cost = 2
+    movement_cost = 0.01
     placement_cost = 1
     optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
 
     # Allow near optimal buffer
-    buff = 'buff' if 'buff' in kwargs else 1
+    buff = 'buff' if 'buff' in kwargs else 0.5
     buff_opt = optimum - buff
 
     # Debug Print Statements
@@ -309,7 +313,7 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
       print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
       print('blueprint:\n{}'.format(bp))
 
-    return (bp, (start_x,0,start_z), 0)
+    return (bp, (start_x,0,start_z), buff_opt)
 
 def lessonS(arena_width, arena_height, arena_length, **kwargs):
     ## Create a single tower lesson
@@ -367,4 +371,4 @@ def lessonS(arena_width, arena_height, arena_length, **kwargs):
       print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
       print('blueprint:\n{}'.format(bp))
 
-    return (bp, (start_x,0,start_z), 0)
+    return (bp, (start_x,0,start_z), buff_opt)
