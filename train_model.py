@@ -3,7 +3,7 @@ import numpy as np
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False):
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False):
     stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
 
@@ -32,6 +32,15 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
         rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward', start_data = rp_data, separators=separators)
         lp = LivePlot('Episode Length during Training', '# Episodes', 'Length (s)', start_data = lp_data, separators=separators)
     del rp_data, lp_data, separators
+
+    if show_qsummary:
+        from display import QSummary
+        from archetypes import StandardArchetypes
+        qsummary = QSummary(StandardArchetypes(
+                cfg('arena', 'width'),
+                cfg('arena', 'height'),
+                cfg('arena', 'length'),
+            ), model)
 
     def reset_fn():
         model.reset_learning_params()
@@ -68,6 +77,9 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
             if plot_stats:
                 rp.add(mission_stats.reward)
                 lp.add(mission_stats.length)
+            if show_qsummary:
+                qsummary.update()
+
             print('{},{},{},{}'.format(
                     curriculum.lesson_num(),
                     episode_num,

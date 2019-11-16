@@ -2,7 +2,7 @@ import numpy as np
 from utils import get_config
 
 class WorldModel:
-    def __init__(self, blueprint, cfg, simulated=False):
+    def __init__(self, blueprint, cfg, simulated=False, agent_pos=None):
         self._cfg      = cfg
         self._offset_x = self._cfg('arena', 'offset', 'x')
         self._offset_y = self._cfg('arena', 'offset', 'y')
@@ -23,16 +23,13 @@ class WorldModel:
             # Wait for update() from Minecraft
             self._world = None
         else:
-            # Build world with random agent start position
+            # Build world
             self._world = np.full(
                 (self._arena_length,
                  self._arena_height,
                  self._arena_width),
                 fill_value='air', dtype=self._str_type)
-            self._world[
-                np.random.randint(self._arena_length),
-                0,
-                np.random.randint(self._arena_width)] = 'agent'
+            self._world[agent_pos[0], agent_pos[1], agent_pos[2]] = 'agent'
 
     def copy(self):
         '''Makes a deep-copy of the world model.'''

@@ -6,6 +6,13 @@ plt.ion()
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.widgets import Cursor
 
+import sys
+if sys.version_info[0] == 2:
+    # Workaround for https://github.com/PythonCharmers/python-future/issues/262
+    import Tkinter as tk
+else:
+    import tkinter as tk
+
 class Display:
     def __init__(self, model):
         self._model = model
@@ -94,3 +101,51 @@ class LivePlot:
             (len(self._data) - 1)*self._downsample_factor,
             linestyle='--'
         )
+
+class QSummary:
+    """Displays a summary of important Q-values, as estimated by a model."""
+    # This class draws heavily from tutorial_6 of the Malmo distribution.
+    def __init__(self, archetypes, model, scale=60):
+        # Offsets in points:
+        self._text_margin   = 10
+        self._bar_margin    = 5
+        self._left_offset   = 200
+        self._right_offset  = 50
+        self._top_offset    = 120
+        self._bottom_offset = 30
+
+        self._archetypes = archetypes
+        self._model = model
+        self._worlds = np.array([a.world for a in archetypes])
+        self._actions = model.actions()
+        self._scale = scale
+        self._root = tk.Tk()
+        self._root.wm_title("Archetype Q-Values")
+        self._canvas = tk.Canvas(self._root,
+            width = len(self._actions)*scale + self._left_offset + self._right_offset,
+            height = len(archetypes)*scale + self._top_offset + self._bottom_offset,
+            borderwidth = 0, highlightthickness = 0, bg = "black")
+        self._canvas.grid()
+        self._root.update()
+
+        self._max_y_pts = scale * len(self._archetypes) + self._top_offset
+        self._max_x_pts = scale * len(self._actions) + self._left_offset
+
+    def update(self):
+        cell_heights = (self._scale - 2 * self._bar_margin) * self._model.predict_batch(self._worlds)
+
+        self._canvas.delete('all')
+        for y in range(self._top_offset, self._max_y_pts+1, self._scale):
+            self._canvas.create_line(self._left_offset, y, self._max_x_pts, y, fill='white')
+        for x in range(self._left_offset, self._max_x_pts+1, self._scale):
+            self._canvas.create_line(x, self._top_offset, x, self._max_y_pts, fill='white')
+
+        for y,arch in zip(range(self._top_offset + self._scale//2, self._max_y_pts, self._scale), self._archetypes):
+            self._canvas.create_text(self._left_offset - self._text_margin, y, anchor='e', text=arch.name, font=('Arial', 20), fill='white')
+        for x,action in zip(range(self._left_offset + self._scale//3, self._max_x_pts, self._scale), self._actions):
+            self._canvas.create_text(x, self._top_offset - self._text_margin, anchor='w', text=action.title(), font=('Arial', 20), fill='white', angle=30)
+
+        for y,row,arch in zip(range(self._top_offset + self._scale, self._max_y_pts + self._scale + 1, self._scale), cell_heights, self._archetypes):
+            for x,ch,action in zip(range(self._left_offset, self._max_x_pts + 1, self._scale), row, self._actions):
+                self._canvas.create_rectangle(x + self._bar_margin, y - self._bar_margin, x + self._scale - self._bar_margin, y - self._bar_margin - ch,
+                    fill=('#22CC22' if arch.optimal_action == action else '#CC2222'))

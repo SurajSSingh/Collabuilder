@@ -119,6 +119,9 @@ class RLearner:
             to_categorical( np.vectorize(self._input_coding.get)(observation), len(self._inputs) )
             ])
 
+    def _preprocess_batch(self, observations):
+        return to_categorical( np.vectorize(self._input_coding.get)(observations), len(self._inputs) )
+
     def _maybe_update_pn(self):
         if self._iters_since_target_update >= self._target_update_frequency:
             self._target_network.set_weights(self._prediction_network.get_weights())
@@ -207,5 +210,14 @@ class RLearner:
     def predict(self, observation):
         '''Runs the model on observation without saving to history or changing model weights.'''
         one_hot_obs = self._preprocess(observation)
-        raw_pred = self._model.predict(one_hot_obs)[0]
+        raw_pred = self._prediction_network.predict(one_hot_obs)[0]
         return dict(zip(self._actions, raw_pred))
+
+    def predict_batch(self, observations):
+        '''Runs the model on all observation without saving to history or changing model weights.
+    Returns predictions as numpy matrix, one row per observation. Columns are in the order returned by self.actions().'''
+        one_hot_obs = self._preprocess_batch(observations)
+        return self._prediction_network.predict(one_hot_obs)
+
+    def actions(self):
+        return list(self._actions)

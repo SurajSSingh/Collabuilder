@@ -19,8 +19,8 @@ if sys.version_info[0] == 2:
 else:
     print = functools.partial(print, flush=True)
 
-MODEL_BASE_NAME = 'curriculum'
-VERSION_NUMBER  = '1.1'
+MODEL_BASE_NAME = 'simple_curriculum'
+VERSION_NUMBER  = '1.2'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 
@@ -40,6 +40,7 @@ if __name__ == '__main__':
     disp  = (Display(model) if set_display else None)
     if set_training:
         plot_stats = ask_yn('Plot stats?')
+        show_qsummary = ask_yn('Show Q-Summary?')
         if cfg('training', 'train_on_history'):
             model.train_on_history(
                 batch_size = cfg('training', 'history', 'batch_size'),
@@ -47,7 +48,7 @@ if __name__ == '__main__':
                 epochs     = cfg('training', 'history', 'epochs')
             )
         curriculum = Curriculum(cfg)
-        train_model(model, curriculum, cfg, initial_episode=model.start_episode, display=disp, simulated=set_simulated, plot_stats=plot_stats)
+        train_model(model, curriculum, cfg, initial_episode=model.start_episode, display=disp, simulated=set_simulated, plot_stats=plot_stats, show_qsummary=show_qsummary)
         print('Training complete.\n\n')
 
 

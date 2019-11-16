@@ -110,7 +110,7 @@ def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=
 def run_simulated_mission(model, mission, cfg):
     print("Simulated mission running.")
 
-    world_model  = WorldModel(mission.blueprint, cfg, simulated=True)
+    world_model  = WorldModel(mission.blueprint, cfg, simulated=True, agent_pos=mission.start_position)
     ticks_left   = 5*mission.max_episode_time
     total_reward = 0
     current_r    = 0
