@@ -28,7 +28,7 @@ def FacingLeft(arena_width, arena_height, arena_length):
     observation[0, arena_width//2, 0, arena_length//2] = 'stone'
     # Add the agent beside that block
     observation[1, (arena_width//2) + 1, 0, arena_length//2] = 'agent'
-    return Archetype(observation, 'Facing Left', 'turn -1')
+    return Archetype(observation, 'Facing Left', 'turn 1')
 
 def FacingRight(arena_width, arena_height, arena_length):
     observation = np.full((2, arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
@@ -36,7 +36,7 @@ def FacingRight(arena_width, arena_height, arena_length):
     observation[0, arena_width//2, 0, arena_length//2] = 'stone'
     # Add the agent beside that block
     observation[1, (arena_width//2) - 1, 0, arena_length//2] = 'agent'
-    return Archetype(observation, 'Facing Right', 'turn 1')
+    return Archetype(observation, 'Facing Right', 'turn -1')
 
 def StandardArchetypes(arena_width, arena_height, arena_length):
     return [f(arena_width, arena_height, arena_length) for f in [

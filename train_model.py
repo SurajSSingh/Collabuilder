@@ -50,7 +50,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
 
     last_reward = -np.inf
     episode_num = initial_episode
-    action_delay = (0 if simulated else 20 / cfg('training', 'overclock_factor'))
+    action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
     max_episode_time = cfg('training', 'max_episode_time')
     save_frequency   = cfg('training', 'save_frequency')
 
@@ -87,9 +87,13 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                     mission_stats.length),
                 file=stats_file, flush=True)
             if episode_num % save_frequency == 0:
-                model.save('epoch_{:09d}'.format(episode_num))
+                save_id = 'epoch_{:09d}'.format(episode_num)
+                model.save(save_id)
+                curriculum.save(save_id)
             bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
-        model.save('epoch_{:09d}'.format(episode_num))
+        save_id = 'epoch_{:09d}'.format(episode_num)
+        model.save(save_id)
+        curriculum.save(save_id)
 
     if curriculum.is_completed():
         print("Agent completed curriculum.")

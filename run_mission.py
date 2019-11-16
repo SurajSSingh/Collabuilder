@@ -1,3 +1,4 @@
+import time
 from collections import namedtuple
 
 from world_model import WorldModel
@@ -19,11 +20,11 @@ MissionStats = namedtuple('MissionStats', [
 
 _AGENT_HOST = None
 
-def run_mission(model, mission, cfg):
+def run_mission(model, mission, cfg, demo=False):
     global _AGENT_HOST
 
     if mission.simulated:
-        return run_simulated_mission(model, mission, cfg)
+        return run_simulated_mission(model, mission, cfg, demo=demo)
 
     # Only import MalmoPython and set up the agent_host if we're actually using them
     import MalmoPython
@@ -39,9 +40,9 @@ def run_mission(model, mission, cfg):
             print(_AGENT_HOST.getUsage())
             exit(0)
 
-    return run_malmo_mission(model, mission, _construct_xml(mission), cfg, _AGENT_HOST)
+    return run_malmo_mission(model, mission, _construct_xml(mission), cfg, _AGENT_HOST, demo=demo)
 
-def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=5):
+def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=5, demo=False):
     # Create default Malmo objects:
     my_mission = MalmoPython.MissionSpec(mission_xml, True)
     my_mission_record = MalmoPython.MissionRecordSpec()
@@ -85,7 +86,10 @@ def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=
             raw_obs = json.loads(world_state.observations[-1].text)
             world_model.update(raw_obs)
             current_r += world_model.reward()
-            action = model.act( current_r, world_model.get_observation() )
+            if demo:
+                action = model.demo_act( world_model.get_observation() )
+            else:
+                action = model.act( current_r, world_model.get_observation() )
             if mission.display is not None:
                 mission.display.update(world_model)
             total_reward += current_r
@@ -107,7 +111,7 @@ def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=
             length = end - start
         )
 
-def run_simulated_mission(model, mission, cfg):
+def run_simulated_mission(model, mission, cfg, demo=False):
     print("Simulated mission running.")
 
     world_model  = WorldModel(mission.blueprint, cfg, simulated=True, agent_pos=mission.start_position)
@@ -120,7 +124,10 @@ def run_simulated_mission(model, mission, cfg):
            world_model.is_mission_running()):
         ticks_left -= 1
         current_r = world_model.reward()
-        action = model.act(current_r, world_model.get_observation())
+        if demo:
+            action = model.demo_act(world_model.get_observation())
+        else:
+            action = model.act(current_r, world_model.get_observation())
         if mission.display is not None:
             mission.display.update(world_model)
         total_reward += current_r
@@ -130,8 +137,11 @@ def run_simulated_mission(model, mission, cfg):
             time.sleep(mission.action_delay)
 
     # Collect last reward, and give to model, then end the mission
+    if mission.display is not None:
+        mission.display.update(world_model)
     current_r = world_model.reward()
-    model.act(current_r, world_model.get_observation())
+    if not demo:
+        model.act(current_r, world_model.get_observation())
     total_reward += current_r
     model.mission_ended()
     print("Simulated mission ended")

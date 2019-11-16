@@ -13,6 +13,7 @@ from display import Display
 from curriculum import Curriculum
 
 from train_model import train_model
+from run_mission import Mission, run_mission
 
 if sys.version_info[0] == 2:
     sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)  # flush print output immediately
@@ -38,6 +39,7 @@ if __name__ == '__main__':
 
     model = RLearner(MODEL_NAME, cfg)
     disp  = (Display(model) if set_display else None)
+    curriculum = Curriculum(cfg, model.name())
     if set_training:
         plot_stats = ask_yn('Plot stats?')
         show_qsummary = ask_yn('Show Q-Summary?')
@@ -47,17 +49,28 @@ if __name__ == '__main__':
                 batches    = cfg('training', 'history', 'batches'),
                 epochs     = cfg('training', 'history', 'epochs')
             )
-        curriculum = Curriculum(cfg)
         train_model(model, curriculum, cfg, initial_episode=model.start_episode, display=disp, simulated=set_simulated, plot_stats=plot_stats, show_qsummary=show_qsummary)
         print('Training complete.\n\n')
 
 
-    # Training complete or skipped, just show learned policy:
-    model._epsilon = 0
     # Turn on display, regardless of settings, for demo
     if disp is None:
         disp = Display(model)
 
     # TODO: implement top-level demonstration code
     print('Demonstration not yet implemented.')
+
+    bp, start_pos = curriculum.get_demo_mission()
+    mission = Mission(
+            blueprint        = bp,
+            start_position   = start_pos,
+            training         = False,
+            action_delay     = 0.2,
+            max_episode_time = cfg('training', 'max_episode_time'),
+            simulated        = set_simulated,
+            display          = disp
+        )
+    run_mission(model, mission, cfg, demo=True)
+
+    input('Press ENTER to exit...')
 

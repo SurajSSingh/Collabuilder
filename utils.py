@@ -14,31 +14,22 @@ def std_checkpoint(name):
         save_best_only=True
     )
 
+def pick_file(name_pattern, prompt='Choose file:', none_prompt=None, failure_prompt='No matching files.'):
+    filepaths = sorted(glob.glob(name_pattern))
+    if len(filepaths) <= 0:
+        print(failure_prompt)
+        return None
+    return ask_options(prompt, filepaths, none_prompt=none_prompt)
+
 def std_load(name, model=None):
     '''Returns the model and epoch number saved under given name, with user confirmation/disambiguation. Returns None,None if no model is loaded.'''
-    filepaths = sorted(glob.glob(CHECKPOINT_DIR + glob.escape(name) + '.epoch_*.hdf5'))
-    if len(filepaths) <= 0:
-        print("No models saved under name", name)
-        i = 0
-    else:
-        i = None
-        while i == None:
-            print("Multiple models saved under name", name)
-            print("  0) Do not load model")
-            for i,fp in enumerate(filepaths):
-                print("{:>3}) {}".format(i+1, fp))
-            try:
-                i = int(input("Choose model number: "))
-                if i < 0 or i > len(filepaths):
-                    raise ValueError()
-            except ValueError:
-                print("Invalid choice. Please enter the number to the left of the desired model file.")
-                i = None
-    if i == 0:
-        print("Not loading model")
+    fp = pick_file(CHECKPOINT_DIR + glob.escape(name) + '.epoch_*.hdf5',
+        none_prompt='Do not load model',
+        failure_prompt='No models saved under name ' + name)
+    if fp is None:
+        print('Not loading model')
         return model, 0
     else:
-        fp    = filepaths[i-1]
         epoch = int(re.match('.*\\.epoch_([0-9]+)', fp).group(1))
         print("Loading", fp)
         if model is None:
@@ -46,7 +37,6 @@ def std_load(name, model=None):
         else:
             model.load_weights(fp)
             return (model, epoch)
-
 
 def persistent_model(name, default_model):
     '''Returns the model, loaded from disk if applicable, and epoch to resume training with.'''
@@ -88,13 +78,16 @@ def ask_int(prompt, min_val=None, max_val=None, default=None):
                     print(' between {} and {} inclusive.'.format(min_val, max_val))
     return i
 
-def ask_options(prompt, options):
-    '''Asks user to select from a list of options.'''
+def ask_options(prompt, options, none_prompt=None):
+    '''Asks user to select from a list of options.
+If none_prompt is not None, allows user to select option 0, returning None.'''
     print(prompt)
+    if none_prompt is not None:
+        print("{:>3}) {}".format(0, none_prompt))
     for i,opt in enumerate(options):
         print("{:>3}) {}".format(i+1, opt))
-    i = ask_int('Selection: ', 1, len(options))
-    return options[i-1]
+    i = ask_int('Selection: ', int(none_prompt is None), len(options))
+    return None if i == 0 else options[i-1]
 
 def get_config(config_file, *attributes, config_dir=CONFIG_DIR):
     '''Fetches a value specified by attributes, from config_file in config_dir.'''

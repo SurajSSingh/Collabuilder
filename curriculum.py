@@ -1,8 +1,9 @@
 import numpy as np
+import json
 
 from collections import namedtuple
 from run_mission import Mission
-from utils import get_config
+from utils import CHECKPOINT_DIR, pick_file
 
 Lesson = namedtuple('Lesson', [
         'name',
@@ -11,8 +12,8 @@ Lesson = namedtuple('Lesson', [
     ])
 
 class Curriculum:
-    def __init__(self, cfg):
-        self._current_level = 0
+    def __init__(self, cfg, name):
+        self._name = 'curriculum.' + name
         self._lessons = [
                 Lesson(
                     name     = lsn['name'],
@@ -20,13 +21,35 @@ class Curriculum:
                     params   = lsn['params']
                 ) for lsn in cfg('currciulum', 'lessons')
             ]
-        self._successes = np.full(cfg('currciulum', 'observation_period'), fill_value=False)
         self._max_lesson_length = cfg('currciulum', 'max_lesson_length')
         self._arena_width = cfg('arena', 'width')
         self._arena_height = cfg('arena', 'height')
         self._arena_length = cfg('arena', 'length')
-        self._current_episode = 0
         self._current_target_reward = np.inf
+
+        # Load these from save file, if possible
+        save_fp = pick_file(CHECKPOINT_DIR + self._name + '*.json',
+            prompt='Choose curriculum checkpoint for ' + self._name,
+            none_prompt='Do not load curriculum checkpoint.',
+            failure_prompt='No currciulum checkpoint. Starting anew...')
+        if save_fp is None:
+            self._successes       = np.full(cfg('currciulum', 'observation_period'), fill_value=False)
+            self._current_level   = 0
+            self._current_episode = 0
+        else:
+            with open(save_fp) as f:
+                saved_data = json.load(f)
+                self._successes = np.array(saved_data['successes'])
+                self._current_level = saved_data['current_level']
+                self._current_episode = saved_data['current_episode']
+
+    def save(self, id):
+        with open(CHECKPOINT_DIR + self._name + id + '.json', 'w') as f:
+            json.dump({
+                    'current_level': self._current_level,
+                    'current_episode': self._current_episode,
+                    'successes': self._successes.tolist()
+                }, f)
 
     def is_completed(self):
         '''Returns True if curriculum was completed successfully.'''
@@ -65,6 +88,18 @@ class Curriculum:
 
         self._current_target_reward = target_reward
         return (bp, start_pos)
+
+    def get_demo_mission(self):
+        # Return a mission without treating this as training, don't ask for or record rewards
+        level = max(self._current_level, len(self._lessons) - 1)
+        bp, start_pos, _ = self._lessons[level].function(
+                arena_width  = self._arena_width,
+                arena_height = self._arena_height,
+                arena_length = self._arena_length,
+                **self._lessons[level].params
+            )
+
+        return bp, start_pos
 
 def _get_lesson_function(name):
     # This is where we can wire together lesson names and functions.

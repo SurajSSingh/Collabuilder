@@ -74,18 +74,23 @@ class LivePlot:
         for s in separators:
             self._axis.axvline((s - 1), linestyle='--')
 
-
     def add(self, r):
         self._temp.append(r)
-        if len(self._temp) >= self._downsample_factor:
-            self._add(np.mean(self._temp))
-            self._temp.clear()
         while len(self._data) >= self._max_data:
             self._downsample_factor *= 2
+            if len(self._data) % 2 == 1:
+                # If the data has odd length, take one data point off the end
+                #   and stuff it into the temp buffer at the beginning,
+                #   since anything on the data list comes before things already in
+                #   the temp buffer.
+                self._temp.insert(0, self._data.pop())
             self._data = list(np.reshape(self._data, (-1, 2)).mean(axis=1))
+        while len(self._temp) >= self._downsample_factor:
+            self._data.append(np.mean(self._temp[:self._downsample_factor]))
+            self._temp = self._temp[self._downsample_factor:]
+        self._draw()
 
-    def _add(self, r):
-        self._data.append(r)
+    def _draw(self):
         self._line.set_xdata(np.arange(0,len(self._data)*self._downsample_factor,self._downsample_factor))
         self._line.set_ydata(self._data)
 
@@ -130,6 +135,8 @@ class QSummary:
 
         self._max_y_pts = scale * len(self._archetypes) + self._top_offset
         self._max_x_pts = scale * len(self._actions) + self._left_offset
+
+        self.update()
 
     def update(self):
         cell_heights = (self._scale - 2 * self._bar_margin) * self._model.predict_batch(self._worlds)

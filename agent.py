@@ -159,6 +159,13 @@ class RLearner:
 
         return self._actions[self._last_action]
 
+    def demo_act(self, observation):
+        # Act without training model
+        # Get predictions:
+        preds = self.predict(observation)
+        # Take the argmax of those predictions, which are keyed by action
+        return max(preds.items(), key=(lambda x: x[1]))[0]
+
     def mission_ended(self):
         self._last_obs = None
         self._last_action = None
