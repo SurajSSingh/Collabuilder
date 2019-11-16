@@ -26,13 +26,13 @@ As a final major improvement to our training speed, we implemented a simulation 
 
 ## Evaluation: 
 
-# Quantitative
+### Quantitative
 
 At this stage, the most important evaluation metric is the progress the agent has made through the curriculum. Currently, our best agent has passed ?? lessons, up to the ?? lesson. A closely related metric is the number of episodes it takes the agent to pass each lesson. Currently, our best agent passes the first lesson in ?? episodes, the second lesson in  ?? episodes, etc. 
 
 Another important metric is the accuracy with which the agent is able to construct the blueprint. We can easily calculate the amount of correct and incorrect blocks placed by the agent by comparing the minecraft world state with the blueprint. It is very important to us that our agent is not placing blocks where they do not belong, and following the input blueprint perfectly. Achieving and maintaining perfect accuracy with increasing complexity of models is a key metric when evaluating the success of our project. Currently, we demand the agent place blocks with perfect accuracy to pass the first and second lessons (check this fact), so we know the 
 
-# Qualitative
+### Qualitative
 
 Although the agent may be able to quickly and perfectly build a blueprint that is simply 2 blocks in a line, this is not all that impressive. The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, it is basically a quantitative way to gauge this metric.
 
