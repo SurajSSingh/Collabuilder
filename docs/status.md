@@ -22,13 +22,20 @@ Where $$r$$ is the reward for taking action $$a$$ in state $$s$$, $$ \gamma $$ i
 
 While running, actions are chosen by an epsilon-greedy policy, with an exponentially decaying epsilon. Initially, there is a $$ \varepsilon_0 = 0.5 $$ chance that the agent will ignore its Q estimates and choose an action at random. Every episode, $$ \varepsilon $$ is multiplied by a decay factor $$ \gamma_{\varepsilon} $$, which is calculated to yield a final $$ \varepsilon_f = 0.01 $$, by $$ \gamma_\varepsilon = (\varepsilon_f / \varepsilon_0)^{1/N} $$, where $$ N = 1500 $$ is the expected number of episodes.
 
-Since the task of building structures requires a complex sequence of actions to be correctly executed, we implemented a curriculum learning system. It has a sequence of lessons, functions which create constrained versions of the full problem, which progress in difficulty. Associated with each lesson is a target reward. If the agent achieves at least the target reward for 50 consecutive episodes, the system progresses to the next lesson.
+Since the task of building structures requires a complex sequence of actions to be correctly executed, we implemented a curriculum learning system. It has a sequence of lessons, functions which create constrained versions of the full problem, which progress in difficulty. Associated with each lesson is a target reward. If the agent achieves at least the target reward for 50 consecutive episodes, the system progresses to the next lesson. Although we are still experimenting with the ordering and effectiveness of the lessons, here are some lessons we have created that demonstrate different levels of complexity:
+1. 1 random block within $$ n $$ distance of the agent with a set starting position
+2. 1 random block at any distance from the agent
+3. $$ k $$ random blocks scattered throughout the arena with a randomly placed agent
+4. Organized 2D structures, like a floor section, a line of blocks, or a corner
+5. Multilayer structures, like wall sections and 2- or 3-block tall corners. (We haven't implemented this lesson yet, but it is next on our list.)
 
 ![Curriculum Start](https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9)
 
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
 
-As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time.
+As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
+
+![Simulation Display](https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY)
 
 
 ## Evaluation: 
@@ -45,17 +52,13 @@ Another important metric is the accuracy with which the agent is able to constru
 
 ### Qualitative
 
-Although the agent may be able to quickly and perfectly build a blueprint that is simply 2 blocks in a line, this is not all that impressive. The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, it is basically a quantitative way to gauge this metric. Although we are still experimenting with the ordering and effectiveness of the lessons, here are some lessons we have created that demonstrate different levels of complexity:
-1. 1 random block within n distance of the agent with a set starting position
-2. k random blocks scattered throughout the arena with a randomly placed agent
-3. randomly scattered 2D structures throughout the arena
-4. 
+The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, measuring lessons completed is basically a quantitative way to gauge this otherwise qualitative metric. At present, we haven't trained or evaluated the agent on blueprints with multiple blocks, so it scores poorly on this metric.
 
+Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores highly. When placed randomly with respect to the desired block, it navigates efficiently, faces the desired location, and places the block. As the blueprints become more complex, this will become slightly harder to evaluate, not to mention that this evaluation requires an active human observer to spend considerable time watching the agent. To get more of a "snapshot" of the agent's behavior, we created a summary display. It takes 4 key archetypical world states, each with one clearly correct action to perform next, and measures the agent's Q-values for every action in each one. It displays these Q-values in a bar-chart, and highlights the correct action for each scenario with a green bar.
 
-When we simply look at the agent building the blueprint, does it seem “smart”. Does it walk around aimlessly before arriving at the next building area or does it effectively and gracefully navigate the structure while building it. Is the agent able to create stair structures to reach high areas, or does it give up and consider certain areas impossible to reach after a while? Does the agent make sure that it leaves space to walk, or does it wall itself in? These are all mistakes that a real Minecraft player would think are silly, but are perfectly possible for an agent that is learning with no preexisting knowledge. Just by watching the agent build, it is easy to get a feel for whether it is up to standards, or it is not quite as smart as it should be.
+![Q Summary](https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM)
 
--Stepping through demo
-- Visualization that shows agent decisions likelihood for some "key states"
+This chart shows that the agent scores highly on these key scenarios, with the model strongly preferring the correct actions in all key scenarios.
 
 
 ## Remaining Goals and Challenges:
