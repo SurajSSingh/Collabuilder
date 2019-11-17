@@ -57,9 +57,6 @@ if __name__ == '__main__':
     if disp is None:
         disp = Display(model)
 
-    # TODO: implement top-level demonstration code
-    print('Demonstration not yet implemented.')
-
     bp, start_pos = curriculum.get_demo_mission()
     mission = Mission(
             blueprint        = bp,

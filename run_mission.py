@@ -103,6 +103,8 @@ def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=
                 agent_host.sendCommand('quit')
             elif world_state.is_mission_running:
                 agent_host.sendCommand( action )
+                if demo:
+                    print(action)
         time.sleep(mission.action_delay)
     end = time.time()
 
@@ -187,7 +189,7 @@ def _construct_xml(mission, cfg):
               <AgentSection mode="Survival">
                 <Name>Blockhead</Name>
                 <AgentStart>
-                  <Placement x="{start_x}" y="6" z="{start_z}" yaw="0" pitch="70"/>
+                  <Placement x="{start_x}" y="{start_y}" z="{start_z}" yaw="0" pitch="70"/>
                   <Inventory>
                     <InventoryObject slot="0" type="stone" quantity="64"/>
                   </Inventory>
@@ -207,10 +209,11 @@ def _construct_xml(mission, cfg):
             </Mission>'''.format(
                     ms_per_tick         = int(50/cfg('training', 'overclock_factor') if mission.training else 50),
                     offscreen_rendering = ('false' if mission.training else 'true'),
-                    start_x = mission.start_position[0] + cfg('arena', 'offset', 'x'),
-                    start_y = mission.start_position[1] + cfg('arena', 'offset', 'y') - 1, # -1 corrects for a mismatch in the way MC positions characters vs. how it reads the position back
-                    start_z = mission.start_position[2] + cfg('arena', 'offset', 'z'),
+                    start_x = mission.start_position[0] + cfg('arena', 'anchor', 'x') + cfg('arena', 'offset', 'x'),
+                    start_y = mission.start_position[1] + cfg('arena', 'anchor', 'y') + cfg('arena', 'offset', 'y') + 1, # +1 corrects for mismatch in start positioning vs. reading position back
+                    start_z = mission.start_position[2] + cfg('arena', 'anchor', 'z') + cfg('arena', 'offset', 'z'),
                     arena_x1 = cfg('arena', 'anchor', 'x'),     arena_x2 = cfg('arena', 'anchor', 'x') - 1 + cfg('arena', 'width'),
+                    # -1 here reads the floor as well, to detect attacking the floor
                     arena_y1 = cfg('arena', 'anchor', 'y') - 1, arena_y2 = cfg('arena', 'anchor', 'y') - 1 + cfg('arena', 'height'),
                     arena_z1 = cfg('arena', 'anchor', 'z'),     arena_z2 = cfg('arena', 'anchor', 'z') - 1 + cfg('arena', 'length'),
                     server_timeout = 1000*mission.max_episode_time

@@ -7,6 +7,9 @@ class WorldModel:
         self._offset_x = self._cfg('arena', 'offset', 'x')
         self._offset_y = self._cfg('arena', 'offset', 'y')
         self._offset_z = self._cfg('arena', 'offset', 'z')
+        self._anchor_x = self._cfg('arena', 'anchor', 'x')
+        self._anchor_y = self._cfg('arena', 'anchor', 'y')
+        self._anchor_z = self._cfg('arena', 'anchor', 'z')
         self._arena_width   = self._cfg('arena', 'width')
         self._arena_height  = self._cfg('arena', 'height')
         self._arena_length  = self._cfg('arena', 'length')
@@ -64,9 +67,9 @@ class WorldModel:
         extended_world = np.transpose(np.reshape(raw_world, (self._arena_height+1, self._arena_width, self._arena_length)), (2, 0, 1))
         world = extended_world[:,1:,:]
         agent_yaw = raw_obs['Yaw']
-        agent_x = int(raw_obs['XPos'] - self._offset_x)
-        agent_y = int(raw_obs['YPos'] - self._offset_y)
-        agent_z = int(raw_obs['ZPos'] - self._offset_z)
+        agent_x = int(raw_obs['XPos'] - self._offset_x - self._anchor_x)
+        agent_y = int(raw_obs['YPos'] - self._offset_y - self._anchor_y)
+        agent_z = int(raw_obs['ZPos'] - self._offset_z - self._anchor_z)
         if (0 <= agent_x < world.shape[0] and 
             0 <= agent_y < world.shape[1] and 
             0 <= agent_z < world.shape[2] ):
