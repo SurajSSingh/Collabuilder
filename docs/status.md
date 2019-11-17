@@ -58,30 +58,22 @@ Another important metric is the accuracy with which the agent is able to constru
 
 The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, measuring lessons completed is basically a quantitative way to gauge this otherwise qualitative metric. At present, we haven't trained or evaluated the agent on blueprints with multiple blocks, so it scores poorly on this metric. Here are some of the lessons that we have used, that can illustrate how complexity can increase.
 
-A 2D blueprint with a single block placed within n units of the agent, with a set starting position
-
-Example: n = 2
+A 2D blueprint with a single block placed within n(2 below) units of the agent, with a set starting position:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1OZe2Qq79Qrq9IaO5ksBpvS3ox-u2bdtx" width="345" height="350" title="CL1">
 </p>
 
-A 2D blueprint with k random blocks placed anywhere in the arena, and random start positions for the agent
-
-Example: k = 9
+A 2D blueprint with k(9 below) random blocks placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1J40kuVpqqPPE4rUO5Lqcbik1l7by_B2W" width="345" height="350" title="CL2">
 </p>
 
-A 2D blueprint with k organized structures placed anywhere in the arena, and random start positions for the agent
-
-Example: k = 5
+A 2D blueprint with k(5 below) organized structures placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1oncEF40tuY3Zww0tXV_c4_KE3jfAoHQy" width="345" height="350" title="CL3">
 </p>
 
-A 3D blueprint with k organized structure with max height 2 placed anywhere in the arena, random starts
-
-Example: k = 5
+A 3D blueprint with k(5 below) organized structure with max height 2 placed anywhere in the arena, random starts:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW-" width="345" height="350" title="CL4">
 </p>
