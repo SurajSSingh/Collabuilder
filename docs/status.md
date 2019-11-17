@@ -4,7 +4,7 @@ title:  Status
 ---
 ## Video:
 
-[![Collabuilder Status Video](http://img.youtube.com/vi/YOUTUBE_VIDEO_ID_HERE/0.jpg)](http://www.youtube.com/watch?v=YOUTUBE_VIDEO_ID_HERE "Video Title")
+[![Collabuilder Status Video](http://img.youtube.com/vi/LxQhP_pT-Ek/0.jpg)](http://www.youtube.com/watch?v=LxQhP_pT-Ek "Collabuilder Status Report Video")
 
 ## Project Summary: 
 
