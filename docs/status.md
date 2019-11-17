@@ -29,7 +29,7 @@ Since the task of building structures requires a complex sequence of actions to 
 4. Organized 2D structures, like a floor section, a line of blocks, or a corner
 5. Multilayer structures, like wall sections and 2- or 3-block tall corners. (We haven't implemented this lesson yet, but it is next on our list.)
 
-![Curriculum Start](https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9)
+![Curriculum Start](https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9) <!-- .element height="30%" width="30%" -->
 
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
 
