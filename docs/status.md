@@ -54,9 +54,9 @@ Another important metric is the accuracy with which the agent is able to constru
 
 The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, measuring lessons completed is basically a quantitative way to gauge this otherwise qualitative metric. At present, we haven't trained or evaluated the agent on blueprints with multiple blocks, so it scores poorly on this metric. Here are some of the lessons that we have used, that can illustrate how complexity can increase.
 
-1. A 2D blueprint with a single block placed within n units of the agent, with a set starting position
+1.A 2D blueprint with a single block placed within n units of the agent, with a set starting position
 
-![Lesson 1](https://drive.google.com/uc?id=1OZe2Qq79Qrq9IaO5ksBpvS3ox-u2bdtx)
+<img src="https://drive.google.com/uc?id=1OZe2Qq79Qrq9IaO5ksBpvS3ox-u2bdtx" width="345" height="350" title="CL1">
 
 Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores highly. When placed randomly with respect to the desired block, it navigates efficiently, faces the desired location, and places the block. As the blueprints become more complex, this will become slightly harder to evaluate, not to mention that this evaluation requires an active human observer to spend considerable time watching the agent. To get more of a "snapshot" of the agent's behavior, we created a summary display. It takes 4 key archetypical world states, each with one clearly correct action to perform next, and measures the agent's Q-values for every action in each one. It displays these Q-values in a bar-chart, and highlights the correct action for each scenario with a green bar.
 
