@@ -65,27 +65,27 @@ A 2D blueprint with k random blocks placed anywhere in the arena, and random sta
 
 Example: k = 9
 <p align="center">
-    <img src=https://drive.google.com/uc?id=1J40kuVpqqPPE4rUO5Lqcbik1l7by_B2W width="345" height="350" title="CL1">
+    <img src="https://drive.google.com/uc?id=1J40kuVpqqPPE4rUO5Lqcbik1l7by_B2W" width="345" height="350" title="CL2">
 </p>
 
 A 2D blueprint with k organized structures placed anywhere in the arena, and random start positions for the agent
 
 Example: k = 5
 <p align="center">
-    <img src=https://drive.google.com/uc?id=1oncEF40tuY3Zww0tXV_c4_KE3jfAoHQy width="345" height="350" title="CL1">
+    <img src="https://drive.google.com/uc?id=1oncEF40tuY3Zww0tXV_c4_KE3jfAoHQy" width="345" height="350" title="CL3">
 </p>
 
 A 3D blueprint with k organized structure with max height 2 placed anywhere in the arena, random starts
 
 Example: k = 5
 <p align="center">
-    <img src=https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW- width="345" height="350" title="CL1">
+    <img src="https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW-" width="345" height="350" title="CL4">
 </p>
 
 Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores highly. When placed randomly with respect to the desired block, it navigates efficiently, faces the desired location, and places the block. As the blueprints become more complex, this will become slightly harder to evaluate, not to mention that this evaluation requires an active human observer to spend considerable time watching the agent. To get more of a "snapshot" of the agent's behavior, we created a summary display. It takes 4 key archetypical world states, each with one clearly correct action to perform next, and measures the agent's Q-values for every action in each one. It displays these Q-values in a bar-chart, and highlights the correct action for each scenario with a green bar.
 
 <p align="center">
-    <img src=https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM title="Q Summary">
+    <img src="https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM" title="Q Summary">
 </p>
 
 This chart shows that the agent scores highly on these key scenarios, with the model strongly preferring the correct actions in all key scenarios.
