@@ -14,9 +14,6 @@ Our project is built using the Malmo Platform provided by Microsoft, which allow
 ## Training the agent
 Training our agent to perform such a complex task is not easy. Before training, the agent has absolutely no logic encoded into it, so it performs actions completely randomly. It needs several thousands of training episodes before our reinforcement learning can actally kick in and teach the agent how to start building interesting structures. This is a lot of time, and training in Minecraft itself would make it even slower. To expedite the process, our team developed a lightweight Minecraft simulator which is much faster, and allows us to attempt training many models much more rapidly. Another technique that we have utilized to train the agents is called "Curriculum Learning". The idea is that rather than throwing grand blueprints that would be nearly impossible for the naive agent to build, we start with very simple structures and gradually increase the complexity of the tasks over time in the form of lessons. Each time the agent finshes the lesson, it has become slightly smarter and learned a new concept that will allow it to be better equiped for the next level of complexity. 
 
-Lesson 1:
-![First Lesson](https://drive.google.com/uc?id=1zZJZ0ScOleQdUOmDDnWN2iU242IWzM4I)
-
 If you want to a deeper dive into our project, below are links to the source code and detailed technical reports:
 
 ### Source code: 
