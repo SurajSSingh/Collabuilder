@@ -32,6 +32,7 @@ Since the task of building structures requires a complex sequence of actions to 
 <p align="center">
     <img src="https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9" width="600" height="336" title="Curriculum">
 </p>
+
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
 
 As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
@@ -50,6 +51,7 @@ At this stage, the most important evaluation metric is the progress the agent ha
     <img src="https://drive.google.com/uc?id=16YhjvOQxChReyeVbsRbH_q8q8Bwsb2Jz" width="600" height="372" title="Reward Plot">
 </p>
 
+
 One can see that the agent begins with highly variable, mostly negative rewards, as it behaves mostly randomly. Over time, it learns how to stay in the arena (thereby avoiding large penalties), and by about episode 500, begins to consistently complete the mission and earn high rewards. By about episode 650, the agent is consistently earning nearly perfect scores, and as its $$ \varepsilon $$ value decreases, it more consistently completes the mission, until around 700 episodes, when it completes the mission enough times to pass on to the next lesson. At this point (the dashed vertical line), it's rewards drop sharply back to the baseline, since it is encountering entirely new worlds, and because its $$ \varepsilon $$ value is reset to $$ \varepsilon_0 $$, so it again behaves highly randomly. This time, the increase in reward per episode is due almost entirely to the $$ \varepsilon $$ decay, and the agent achieves nearly optimal behavior by \~1200 further episodes.
 
 Another important metric is the accuracy with which the agent is able to construct the blueprint. We can easily calculate the amount of correct and incorrect blocks placed by the agent by comparing the minecraft world state with the blueprint. It is very important to us that our agent is not placing blocks where they do not belong, and following the input blueprint perfectly. Achieving and maintaining perfect accuracy with increasing complexity of models is a key metric when evaluating the success of our project. Currently, we demand the agent place blocks with perfect accuracy to pass the first and second lessons, so we know the agent was able to do this for both lessons.
@@ -63,22 +65,27 @@ A 2D blueprint with a single block placed within n(2 below) units of the agent, 
     <img src="https://drive.google.com/uc?id=1OZe2Qq79Qrq9IaO5ksBpvS3ox-u2bdtx" width="345" height="350" title="CL1">
 </p>
 
+
 A 2D blueprint with k(9 below) random blocks placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1J40kuVpqqPPE4rUO5Lqcbik1l7by_B2W" width="345" height="350" title="CL2">
 </p>
+
 
 A 2D blueprint with k(5 below) organized structures placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1oncEF40tuY3Zww0tXV_c4_KE3jfAoHQy" width="345" height="350" title="CL3">
 </p>
 
+
 A 3D blueprint with k(5 below) organized structure with max height 2 placed anywhere in the arena, random starts:
 <p align="center">
     <img src="https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW-" width="345" height="350" title="CL4">
 </p>
 
+
 Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores highly. When placed randomly with respect to the desired block, it navigates efficiently, faces the desired location, and places the block. As the blueprints become more complex, this will become slightly harder to evaluate, not to mention that this evaluation requires an active human observer to spend considerable time watching the agent. To get more of a "snapshot" of the agent's behavior, we created a summary display. It takes 4 key archetypical world states, each with one clearly correct action to perform next, and measures the agent's Q-values for every action in each one. It displays these Q-values in a bar-chart, and highlights the correct action for each scenario with a green bar.
+
 
 <p align="center">
     <img src="https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM" width="400" height="304" title="Q Summary">
