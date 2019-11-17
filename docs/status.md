@@ -111,7 +111,7 @@ Another goal is finding better configurations for our neural network that will e
 
 
 <p align="center">
-    <img src="https://drive.google.com/open?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
+    <img src="https://drive.google.com/open?id=1Djz_H2ph1dmGJPIsxrkbDbAfln_2-lGp" title="Model Tester">
 </p>
 
 
