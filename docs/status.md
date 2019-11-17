@@ -45,9 +45,17 @@ Another important metric is the accuracy with which the agent is able to constru
 
 ### Qualitative
 
-Although the agent may be able to quickly and perfectly build a blueprint that is simply 2 blocks in a line, this is not all that impressive. The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, it is basically a quantitative way to gauge this metric.
+Although the agent may be able to quickly and perfectly build a blueprint that is simply 2 blocks in a line, this is not all that impressive. The complexity of the blueprints that our agent is able to build is another key metric that will determine the success of our project. Building structures that are tall with random walls would be the current goal. Since the curriculum slowly increases the complexity of the blueprints, it is basically a quantitative way to gauge this metric. Although we are still experimenting with the ordering and effectiveness of the lessons, here are some lessons we have created that demonstrate different levels of complexity:
+1. 1 random block within n distance of the agent with a set starting position
+2. k random blocks scattered throughout the arena with a randomly placed agent
+3. randomly scattered 2D structures throughout the arena
+4. 
+
 
 When we simply look at the agent building the blueprint, does it seem “smart”. Does it walk around aimlessly before arriving at the next building area or does it effectively and gracefully navigate the structure while building it. Is the agent able to create stair structures to reach high areas, or does it give up and consider certain areas impossible to reach after a while? Does the agent make sure that it leaves space to walk, or does it wall itself in? These are all mistakes that a real Minecraft player would think are silly, but are perfectly possible for an agent that is learning with no preexisting knowledge. Just by watching the agent build, it is easy to get a feel for whether it is up to standards, or it is not quite as smart as it should be.
+
+-Stepping through demo
+- Visualization that shows agent decisions likelihood for some "key states"
 
 
 ## Remaining Goals and Challenges:
