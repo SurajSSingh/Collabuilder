@@ -1,3 +1,7 @@
+import sys
+import MalmoPython
+import json
+
 import time
 from collections import namedtuple
 
@@ -40,7 +44,7 @@ def run_mission(model, mission, cfg, demo=False):
             print(_AGENT_HOST.getUsage())
             exit(0)
 
-    return run_malmo_mission(model, mission, _construct_xml(mission), cfg, _AGENT_HOST, demo=demo)
+    return run_malmo_mission(model, mission, _construct_xml(mission,cfg), cfg, _AGENT_HOST, demo=demo)
 
 def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=5, demo=False):
     # Create default Malmo objects:
@@ -66,6 +70,7 @@ def run_malmo_mission(model, mission, mission_xml, cfg, agent_host, max_retries=
         print(".", end="")
         time.sleep(0.1)
         world_state = agent_host.getWorldState()
+        time.sleep(1)
         for error in world_state.errors:
             print("Error:",error.text)
 
@@ -154,7 +159,7 @@ def run_simulated_mission(model, mission, cfg, demo=False):
 def _construct_xml(mission, cfg):
     return '''<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
             <Mission xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            
+
             <About>
               <Summary>Place a block!</Summary>
             </About>
@@ -163,7 +168,7 @@ def _construct_xml(mission, cfg):
                 <MsPerTick>{ms_per_tick}</MsPerTick>
                 <PrioritiseOffscreenRendering>{offscreen_rendering}</PrioritiseOffscreenRendering>
               </ModSettings>
-              
+
             <ServerSection>
               <ServerInitialConditions>
                 <Time>
@@ -178,11 +183,11 @@ def _construct_xml(mission, cfg):
                   <ServerQuitWhenAnyAgentFinishes/>
                 </ServerHandlers>
               </ServerSection>
-              
+
               <AgentSection mode="Survival">
                 <Name>Blockhead</Name>
                 <AgentStart>
-                  <Placement x="{start_x}" y="{start_y}" z="{start_z}" yaw="0" pitch="70"/>
+                  <Placement x="{start_x}" y="6" z="{start_z}" yaw="0" pitch="70"/>
                   <Inventory>
                     <InventoryObject slot="0" type="stone" quantity="64"/>
                   </Inventory>
