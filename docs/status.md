@@ -16,13 +16,15 @@ In particular, the neural network accepts input tensors with shape $$ (2, B, W, 
 The network first applies two levels of 3-D convolutions, each using 8 cubic filters, 3 units to a side. Then, a layer of max-pooling is applied, followed by two fully-connected layers. The output is a Q-value estimate for each of five available actions: Turn left, Turn right, Jump/Move forward, Place block, and Remove Block.
 For training, a double-Q-learning update policy is implemented, whereby a copy of the network with frozen weights $$ \Theta_0 $$ is used to estimate the target Q-values $$ \hat{Q} $$ as follows:
 
-$$ \hat{Q}(s, a) = r + \gamma \max_{a \in A}Q(s’, a ; \Theta_0) - Q(s, a; \Theta) $$
+$$ \hat{Q}(s, a) = r + \gamma \max_{a' \in A}Q(s’, a' ; \Theta_0) - Q(s, a; \Theta) $$
 
-Where $$r$$ is the reward for taking action $$a$$ in state $$s$$, $$ \gamma $$ is a discount factor (which we set to 0.95), $$s’$$ is the resulting state, and $$\Theta$$ is the weights on the training network. This target value is then used for one iteration of ``supervised’’ learning for the target network, to update $$\Theta$$. Every 20 iterations, $$ \Theta_0 $$ is set to the current value of $$ \Theta $$.
+Where $$r$$ is the reward for taking action $$a$$ in state $$s$$, $$ \gamma $$ is a discount factor (which we set to 0.95), $$s’$$ is the resulting state, and $$\Theta$$ is the weights on the training network. This target value is then used for one iteration of "supervised" learning for the target network, to update $$\Theta$$. Every 20 iterations, $$ \Theta_0 $$ is set to the current value of $$ \Theta $$.
 
 While running, actions are chosen by an epsilon-greedy policy, with an exponentially decaying epsilon. Initially, there is a $$ \varepsilon_0 = 0.5 $$ chance that the agent will ignore its Q estimates and choose an action at random. Every episode, $$ \varepsilon $$ is multiplied by a decay factor $$ \gamma_{\varepsilon} $$, which is calculated to yield a final $$ \varepsilon_f = 0.01 $$, by $$ \gamma_\varepsilon = (\varepsilon_f / \varepsilon_0)^{1/N} $$, where $$ N = 1500 $$ is the expected number of episodes.
 
 Since the task of building structures requires a complex sequence of actions to be correctly executed, we implemented a curriculum learning system. It has a sequence of lessons, functions which create constrained versions of the full problem, which progress in difficulty. Associated with each lesson is a target reward. If the agent achieves at least the target reward for 50 consecutive episodes, the system progresses to the next lesson.
+
+![Curriculum Start](https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9)
 
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
 
@@ -33,9 +35,13 @@ As a final major improvement to our training speed, we implemented a simulation 
 
 ### Quantitative
 
-At this stage, the most important evaluation metric is the progress the agent has made through the curriculum. Currently, our best agent has passed ?? lessons, up to the ?? lesson. A closely related metric is the number of episodes it takes the agent to pass each lesson. Currently, our best agent passes the first lesson in ?? episodes, the second lesson in  ?? episodes, etc. 
+At this stage, the most important evaluation metric is the progress the agent has made through the curriculum. Currently, our best agent has passed 2 lessons, the first starting the agent close to the goal of placing a single block, and the second starting the agent anywhere in the arena with the same goal. A closely related metric is the number of episodes it takes the agent to pass each lesson. Currently, our best agent passes the first lesson in \~700 episodes, and the second lesson in \~1,200 episodes more. Below, we've plotted the reward earned per episode as the agent was training. Note that this graph is slightly smoothed (by averaging blocks of 4 episodes together), for less cluttered viewing and clearer trendlines.
 
-Another important metric is the accuracy with which the agent is able to construct the blueprint. We can easily calculate the amount of correct and incorrect blocks placed by the agent by comparing the minecraft world state with the blueprint. It is very important to us that our agent is not placing blocks where they do not belong, and following the input blueprint perfectly. Achieving and maintaining perfect accuracy with increasing complexity of models is a key metric when evaluating the success of our project. Currently, we demand the agent place blocks with perfect accuracy to pass the first and second lessons (check this fact), so we know the 
+![Reward Plot](https://drive.google.com/uc?id=16YhjvOQxChReyeVbsRbH_q8q8Bwsb2Jz)
+
+One can see that the agent begins with highly variable, mostly negative rewards, as it behaves mostly randomly. Over time, it learns how to stay in the arena (thereby avoiding large penalties), and by about episode 500, begins to consistently complete the mission and earn high rewards. By about episode 650, the agent is consistently earning nearly perfect scores, and as its $$ \varepsilon $$ value decreases, it more consistently completes the mission, until around 700 episodes, when it completes the mission enough times to pass on to the next lesson. At this point (the dashed vertical line), it's rewards drop sharply back to the baseline, since it is encountering entirely new worlds, and because its $$ \varepsilon $$ value is reset to $$ \varepsilon_0 $$, so it again behaves highly randomly. This time, the increase in reward per episode is due almost entirely to the $$ \varepsilon $$ decay, and the agent achieves nearly optimal behavior by \~1200 further episodes.
+
+Another important metric is the accuracy with which the agent is able to construct the blueprint. We can easily calculate the amount of correct and incorrect blocks placed by the agent by comparing the minecraft world state with the blueprint. It is very important to us that our agent is not placing blocks where they do not belong, and following the input blueprint perfectly. Achieving and maintaining perfect accuracy with increasing complexity of models is a key metric when evaluating the success of our project. Currently, we demand the agent place blocks with perfect accuracy to pass the first and second lessons, so we know the agent was able to do this for both lessons.
 
 ### Qualitative
 

@@ -1,0 +1,11 @@
+checkpoint/
+stats/
+__pycache__/
+
+*.so
+
+*.pyc
+
+*.hdf5
+
+*.hdf5
