@@ -76,6 +76,8 @@ Example: k = 5
 </p>
 
 A 3D blueprint with k organized structure with max height 2 placed anywhere in the arena, random starts
+
+Example: k = 5
 <p align="center">
     <img src=https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW- width="345" height="350" title="CL1">
 </p>
