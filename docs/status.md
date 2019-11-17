@@ -29,13 +29,16 @@ Since the task of building structures requires a complex sequence of actions to 
 4. Organized 2D structures, like a floor section, a line of blocks, or a corner
 5. Multilayer structures, like wall sections and 2- or 3-block tall corners. (We haven't implemented this lesson yet, but it is next on our list.)
 
+
 <p align="center">
     <img src="https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9" width="600" height="336" title="Curriculum">
 </p>
 
+
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
 
 As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
+
 
 <p align="center">
     <img src="https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY" width="500" height="425" title="Simulation Display">
@@ -46,6 +49,7 @@ As a final major improvement to our training speed, we implemented a simulation 
 ### Quantitative
 
 At this stage, the most important evaluation metric is the progress the agent has made through the curriculum. Currently, our best agent has passed 2 lessons, the first starting the agent close to the goal of placing a single block, and the second starting the agent anywhere in the arena with the same goal. A closely related metric is the number of episodes it takes the agent to pass each lesson. Currently, our best agent passes the first lesson in \~700 episodes, and the second lesson in \~1,200 episodes more. Below, we've plotted the reward earned per episode as the agent was training. Note that this graph is slightly smoothed (by averaging blocks of 4 episodes together), for less cluttered viewing and clearer trendlines.
+
 
 <p align="center">
     <img src="https://drive.google.com/uc?id=16YhjvOQxChReyeVbsRbH_q8q8Bwsb2Jz" width="600" height="372" title="Reward Plot">
@@ -90,6 +94,7 @@ Another key qualitative metric is to evaluate whether the agent behaves "reasona
 <p align="center">
     <img src="https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM" width="400" height="304" title="Q Summary">
 </p>
+
 
 This chart shows that the agent scores highly on these key scenarios, with the model strongly preferring the correct actions in all key scenarios.
 
