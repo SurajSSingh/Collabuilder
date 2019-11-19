@@ -4,6 +4,8 @@ title:  Status
 ---
 ## Video:
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/LxQhP_pT-Ek" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 [![Collabuilder Status Video](http://img.youtube.com/vi/LxQhP_pT-Ek/0.jpg)](http://www.youtube.com/watch?v=LxQhP_pT-Ek "Collabuilder Status Report Video")
 
 ## Project Summary: 
