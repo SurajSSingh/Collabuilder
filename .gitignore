@@ -1,6 +1,8 @@
 checkpoint/
 stats/
 __pycache__/
+mt_input/
+mt_output/
 
 *.so
 

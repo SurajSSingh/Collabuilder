@@ -3,8 +3,9 @@ import numpy as np
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False):
-    stats_filename = 'stats/' + model.name() + '.csv'
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None):
+    if not stats_filename:
+        stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
 
     try:
@@ -21,7 +22,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
             comments='')
         del stats_data
         new_file = False
-    except OSError: # File not found
+    except (OSError, FileNotFoundError): # File not found
         rp_data = []
         lp_data = []
         separators = []
