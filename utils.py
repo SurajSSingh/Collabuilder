@@ -89,13 +89,19 @@ If none_prompt is not None, allows user to select option 0, returning None.'''
     i = ask_int('Selection: ', int(none_prompt is None), len(options))
     return None if i == 0 else options[i-1]
 
-def get_config(config_file, *attributes, config_dir=CONFIG_DIR):
+def get_config(config_file, *attributes, config_dir=CONFIG_DIR, default=None):
     '''Fetches a value specified by attributes, from config_file in config_dir.'''
-    if config_file[-5:] != '.json':
-        config_file += '.json'
-    with open(config_dir + config_file) as f:
-        json_object = json.load(f)
-    for a in attributes:
-        json_object = json_object[a]
-    return json_object
+    try:
+        if config_file[-5:] != '.json':
+            config_file += '.json'
+        with open(config_dir + config_file) as f:
+            json_object = json.load(f)
+        for a in attributes:
+            json_object = json_object[a]
+        return json_object
+    except KeyError:
+        if default is not None:
+            return default
+        else:
+            raise
 

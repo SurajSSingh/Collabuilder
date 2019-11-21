@@ -139,7 +139,10 @@ class QSummary:
         self.update()
 
     def update(self):
-        cell_heights = (self._scale - 2 * self._bar_margin) * self._model.predict_batch(self._worlds)
+        raw_q = self._model.predict_batch(self._worlds)
+        pos_q = raw_q > 0
+        mag_q = np.abs(raw_q)
+        cell_heights = (self._scale - 2 * self._bar_margin) * (mag_q / mag_q.sum(axis=1).reshape(-1, 1))
 
         self._canvas.delete('all')
         for y in range(self._top_offset, self._max_y_pts+1, self._scale):
@@ -152,7 +155,16 @@ class QSummary:
         for x,action in zip(range(self._left_offset + self._scale//3, self._max_x_pts, self._scale), self._actions):
             self._canvas.create_text(x, self._top_offset - self._text_margin, anchor='w', text=action.title(), font=('Arial', 20), fill='white', angle=30)
 
-        for y,row,arch in zip(range(self._top_offset + self._scale, self._max_y_pts + self._scale + 1, self._scale), cell_heights, self._archetypes):
-            for x,ch,action in zip(range(self._left_offset, self._max_x_pts + 1, self._scale), row, self._actions):
-                self._canvas.create_rectangle(x + self._bar_margin, y - self._bar_margin, x + self._scale - self._bar_margin, y - self._bar_margin - ch,
-                    fill=('#22CC22' if arch.optimal_action == action else '#CC2222'))
+        for y,row,arch,sign_row in zip(range(self._top_offset + self._scale, self._max_y_pts + self._scale + 1, self._scale), cell_heights, self._archetypes, pos_q):
+            for x,ch,action,positive in zip(range(self._left_offset, self._max_x_pts + 1, self._scale), row, self._actions, sign_row):
+                self._canvas.create_rectangle(
+                    x + self._bar_margin,
+                    y - self._bar_margin,
+                    x + self._scale - self._bar_margin,
+                    y - self._bar_margin - ch,
+                    fill = {
+                        (True , True ): '#22CC22',
+                        (True , False): '#114411',
+                        (False, True ): '#CC2222',
+                        (False, False): '#441111'
+                    }[(arch.optimal_action == action, positive)])

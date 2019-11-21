@@ -21,12 +21,12 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_BASE_NAME = 'simple_curriculum'
-VERSION_NUMBER  = '1.2'
+VERSION_NUMBER  = '1.3'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 
 if __name__ == '__main__':
-    cfg = lambda *args: get_config(CONFIG_FILE, *args)
+    cfg = lambda *args, **kwargs: get_config(CONFIG_FILE, *args, **kwargs)
 
     modes = {
         'Training - Simulated, no Display': (True, False, True),
