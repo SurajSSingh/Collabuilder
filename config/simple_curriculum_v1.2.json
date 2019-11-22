@@ -3,13 +3,13 @@
         "layers": [
             "# These layers should describe all but the input and output layers. Those are handled by the system.",
             "# Reduce incoming 6D tensor to 5D by merging channels (dim 1) and one-hot (dim 5):",
-            "keras.layers.Permute((1, 5, 2, 3, 4))",
-            "keras.layers.Reshape((-1, *BLUEPRINT.shape))",
+            "keras.layers.Permute((2, 3, 4, 1, 5))",
+            "keras.layers.Reshape(({arena_width}, {arena_height}, {arena_length}, 2*{num_inputs}))",
             "# Convolve each input, treating the blueprint and world state as separate channels",
-            "keras.layers.Conv3D(8, (3, 3, 3), padding='same', data_format='channels_first', activation='relu')",
-            "keras.layers.Conv3D(8, (3, 3, 3), padding='same', data_format='channels_first', activation='relu')",
+            "keras.layers.Conv3D(8, (3, 3, 3), padding='same', data_format='channels_last', activation='relu')",
+            "keras.layers.Conv3D(8, (3, 3, 3), padding='same', data_format='channels_last', activation='relu')",
             "# max-pool features together a bit:",
-            "keras.layers.MaxPooling3D(pool_size=BLUEPRINT.shape, data_format='channels_first')",
+            "keras.layers.MaxPooling3D(pool_size=(5, 1, 5), data_format='channels_last')",
             "# Flatten, ready for fully-connected layers:",
             "keras.layers.Flatten()",
             "# Do some thinking:",
@@ -17,9 +17,10 @@
         ]
     },
     "training": {
-        "num_episodes": 100000,
-        "max_episode_time": 20,
-        "initial_epsilon": 0.5,
+        "num_episodes": 1000,
+        "save_frequency": 50,
+        "max_episode_time": 5,
+        "initial_epsilon": 0.8,
         "final_epsilon": 0.01,
         "overclock_factor": 5,
         "save_history": false,
@@ -40,10 +41,26 @@
             "mission_complete": 1
         }
     },
+    "currciulum": {
+        "observation_period": 30,
+        "max_lesson_length": 1200,
+        "lessons": [
+            {
+                "name": "lessonA",
+                "params": {
+                    "k": 2
+                }
+            },
+            {
+                "name": "lessonB",
+                "params": {}
+            }
+        ]
+    },
     "arena": {
-        "width": 15,
-        "height": 5,
-        "length": 15,
+        "width": 5,
+        "height": 1,
+        "length": 5,
         "anchor": {
             "x": 0,
             "y": 5,
