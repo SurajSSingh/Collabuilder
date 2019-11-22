@@ -97,8 +97,10 @@ class RLearner:
                         num_actions  = len(cfg('actions'))
                     ))
                 self._prediction_network.add(new_layer)
-        # Output one-hot encoded action
-        self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
+        if cfg('agent', 'auto_final_layer', default=True):
+            # Output one-hot encoded action
+            self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
+        # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_episode = 0
         self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network)
@@ -140,10 +142,11 @@ class RLearner:
             target_vec = self._target_network.predict(self._last_obs)
             target_vec[0, self._last_action] = target
             self._prediction_network.train_on_batch(self._last_obs, target_vec)
-            self._unsaved_history['observation'].append(self._last_obs[0])
-            self._unsaved_history['action'].append(self._last_action)
-            self._unsaved_history['reward'].append(last_reward)
-            self._unsaved_history['next_observation'].append(one_hot_obs[0])
+            if self._save_history:
+                self._unsaved_history['observation'].append(self._last_obs[0])
+                self._unsaved_history['action'].append(self._last_action)
+                self._unsaved_history['reward'].append(last_reward)
+                self._unsaved_history['next_observation'].append(one_hot_obs[0])
 
         # Now, choose next action, and store last_* info for next iteration
         self._last_obs  = one_hot_obs
