@@ -3,7 +3,7 @@ import numpy as np
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None):
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None):
     if not stats_filename:
         stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
@@ -58,7 +58,10 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     with open(stats_filename, 'a') as stats_file:
         if new_file:
             print(stats_header, file=stats_file, flush=True)
-        bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
+        if not max_lesson:
+            bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
+        else:
+            bp, start_pos = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         while bp is not None:
             episode_num += 1
             mission = Mission(

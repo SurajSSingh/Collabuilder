@@ -21,6 +21,7 @@ class Curriculum:
                     params   = lsn['params']
                 ) for lsn in cfg('currciulum', 'lessons')
             ]
+
         self._max_lesson_length = cfg('currciulum', 'max_lesson_length')
         self._arena_width = cfg('arena', 'width')
         self._arena_height = cfg('arena', 'height')
@@ -58,7 +59,7 @@ class Curriculum:
     def lesson_num(self):
         return self._current_level
 
-    def get_mission(self, last_reward, model_reset_callback=None):
+    def get_mission(self, last_reward, model_reset_callback=None, max_lesson=len(self._lessons)-1):
         # Run this check after finding the mission, so we have a mission to give on the last iteration
         if self._successes.all():
             # Agent has successfully completed the lesson the desired number of times.
@@ -70,7 +71,7 @@ class Curriculum:
                 model_reset_callback()
 
         if ((self._current_episode >= self._max_lesson_length) or
-            (self._current_level >= len(self._lessons)) ):
+            (self._current_level > max_lesson)):
             return (None, None)
 
         self._successes[self._current_episode % self._successes.size] = (

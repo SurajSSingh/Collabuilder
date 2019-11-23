@@ -30,18 +30,24 @@ class ModelTester:
             #glob pattern check here
             if file[-5:] == '.json':
                 self.modelList.append(ModelData(file, input_dir, output_dir))
+        self.completed_count = 0
 
     def train(self):
-        #while curriculum has more lessons
-        for m in self.modelList:
-            if m.activated:
-                #train for one lesson and output somewhere
-                train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename)
-        # analyze aggregate population stats
-        #analyze results and deactivate poor performers
-        #poor performers should output a summary
-        # who finished every lesson, who failed the current lesson
-        for m in self.modelList:
-            if m.activated:
-                print(m.name)
+        # add one to completed count whenever a model completes curriculum or gets deactivated
+        current_lesson = 1
+        while self.completed_count != len(self.modelList):
+            for m in self.modelList:
+                if m.activated:
+                    #train for one lesson and output somewhere
+                    train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename, max_lesson=current_lesson)
+
+            # analyze aggregate population stats
+            #analyze results and deactivate poor performers
+            #poor performers should output a summary
+            # who finished every lesson, who failed the current lesson
+            current_lesson+=1
+            
+            for m in self.modelList:
+                if m.activated:
+                    print(m.name)
 
