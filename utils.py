@@ -21,11 +21,14 @@ def pick_file(name_pattern, prompt='Choose file:', none_prompt=None, failure_pro
         return None
     return ask_options(prompt, filepaths, none_prompt=none_prompt)
 
-def std_load(name, model=None):
+def std_load(name, model=None, load_file=None):
     '''Returns the model and epoch number saved under given name, with user confirmation/disambiguation. Returns None,None if no model is loaded.'''
-    fp = pick_file(CHECKPOINT_DIR + glob.escape(name) + '.epoch_*.hdf5',
-        none_prompt='Do not load model',
-        failure_prompt='No models saved under name ' + name)
+    fp = (
+        load_file if load_file is not None else
+        pick_file(CHECKPOINT_DIR + glob.escape(name) + '.epoch_*.hdf5',
+            none_prompt='Do not load model',
+            failure_prompt='No models saved under name ' + name)
+        )
     if fp is None:
         print('Not loading model')
         return model, 0

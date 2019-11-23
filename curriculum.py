@@ -8,20 +8,24 @@ from utils import CHECKPOINT_DIR, pick_file
 Lesson = namedtuple('Lesson', [
         'name',
         'function',
-        'params'
+        'params',
+        'max_episodes',
+        'set_learning_schedule'
     ])
 
 class Curriculum:
-    def __init__(self, cfg, name):
+    def __init__(self, cfg, name, load_file=None):
         self._name = 'curriculum.' + name
+        self._max_lesson_length = cfg('curriculum', 'max_lesson_length')
         self._lessons = [
                 Lesson(
                     name     = lsn['name'],
                     function = _get_lesson_function(lsn['name']),
-                    params   = lsn['params']
-                ) for lsn in cfg('currciulum', 'lessons')
+                    params   = lsn['params'],
+                    max_episodes = lsn.get('max_episodes', self._max_lesson_length),
+                    set_learning_schedule = lsn.get('set_learning_schedule', False)
+                ) for lsn in cfg('curriculum', 'lessons')
             ]
-
         self._max_lesson_length = cfg('currciulum', 'max_lesson_length')
         self._arena_width = cfg('arena', 'width')
         self._arena_height = cfg('arena', 'height')
@@ -29,12 +33,15 @@ class Curriculum:
         self._current_target_reward = np.inf
 
         # Load these from save file, if possible
-        save_fp = pick_file(CHECKPOINT_DIR + self._name + '*.json',
-            prompt='Choose curriculum checkpoint for ' + self._name,
-            none_prompt='Do not load curriculum checkpoint.',
-            failure_prompt='No currciulum checkpoint. Starting anew...')
+        save_fp = (
+            load_file if load_file is not None else
+            pick_file(CHECKPOINT_DIR + self._name + '*.json',
+                prompt='Choose curriculum checkpoint for ' + self._name,
+                none_prompt='Do not load curriculum checkpoint.',
+                failure_prompt='No curriculum checkpoint. Starting anew...')
+            )
         if save_fp is None:
-            self._successes       = np.full(cfg('currciulum', 'observation_period'), fill_value=False)
+            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=False)
             self._current_level   = 0
             self._current_episode = 0
         else:
@@ -68,10 +75,14 @@ class Curriculum:
             self._current_episode = 0
             self._successes.fill(False)
             if model_reset_callback is not None:
-                model_reset_callback()
+                if (self._current_level <= len(self._lessons) and
+                    self._lessons[self._current_level].set_learning_schedule):
+                    model_reset_callback(num_episodes=self._lessons.max_episodes)
+                else:
+                    model_reset_callback()
 
-        if ((self._current_episode >= self._max_lesson_length) or
-            (self._current_level > max_lesson)):
+        if ((self._current_level >= len(self._lessons)) or
+            (self._current_episode >= self._lessons[self._current_level].max_episodes)):
             return (None, None)
 
         self._successes[self._current_episode % self._successes.size] = (

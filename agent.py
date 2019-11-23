@@ -68,7 +68,7 @@ class RLearner:
             end   = start + self._batch_size
             return (self._X[start:end], self._Y[start:end])
 
-    def __init__(self, name, cfg):
+    def __init__(self, name, cfg, load_file=None):
         self._name = name
         self._save_history = cfg('training', 'save_history')
         self._inputs = cfg('inputs')
@@ -103,14 +103,16 @@ class RLearner:
         # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_episode = 0
-        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network)
+        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
         self._target_network = clone_model(self._prediction_network)
         self._target_network.build(self._prediction_network.input_shape)
 
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
-        self._epsilon_decay = (cfg('training', 'final_epsilon') / self._initial_epsilon)**(1.0/cfg('training', 'num_episodes'))
+        self._final_epsilon   = cfg('training', 'final_epsilon')
+        self._num_episodes    = cfg('training', 'num_episodes')
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
         self._epsilon = self._initial_epsilon * (self._epsilon_decay**(self.start_episode + 1))
         self._discount = 0.95
         self._last_obs = None
@@ -174,8 +176,11 @@ class RLearner:
         self._last_action = None
         self._epsilon *= self._epsilon_decay
 
-    def reset_learning_params(self):
+    def reset_learning_params(self, num_episodes=None):
+        if num_episodes is not None:
+            self._num_episodes = num_episodes
         self._epsilon = self._initial_epsilon
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
 
     def save(self, id=None):
         self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')

@@ -43,8 +43,8 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 cfg('arena', 'length'),
             ), model)
 
-    def reset_fn():
-        model.reset_learning_params()
+    def reset_fn(*args, **kwargs):
+        model.reset_learning_params(*args, **kwargs)
         if plot_stats:
             rp.add_sep()
             lp.add_sep()
