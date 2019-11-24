@@ -10,6 +10,7 @@ Lesson = namedtuple('Lesson', [
         'function',
         'params',
         'max_episodes',
+        'max_episode_time',
         'set_learning_schedule'
     ])
 
@@ -17,16 +18,18 @@ class Curriculum:
     def __init__(self, cfg, name, load_file=None):
         self._name = 'curriculum.' + name
         self._max_lesson_length = cfg('curriculum', 'max_lesson_length')
+        self._default_episode_time = cfg('training', 'num_episodes')
         self._lessons = [
                 Lesson(
                     name     = lsn['name'],
                     function = _get_lesson_function(lsn['name']),
                     params   = lsn['params'],
                     max_episodes = lsn.get('max_episodes', self._max_lesson_length),
+                    max_episode_time = lsn.get('max_episode_time', self._default_episode_time),
                     set_learning_schedule = lsn.get('set_learning_schedule', False)
                 ) for lsn in cfg('curriculum', 'lessons')
             ]
-        self._max_lesson_length = cfg('currciulum', 'max_lesson_length')
+        self._max_lesson_length = cfg('curriculum', 'max_lesson_length')
         self._arena_width = cfg('arena', 'width')
         self._arena_height = cfg('arena', 'height')
         self._arena_length = cfg('arena', 'length')
@@ -41,8 +44,9 @@ class Curriculum:
                 failure_prompt='No curriculum checkpoint. Starting anew...')
             )
         if save_fp is None:
-            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=False)
-            self._current_level   = 0
+            # Start off before the first lesson, to correctly trigger model resetting for the first lesson
+            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=True)
+            self._current_level   = -1
             self._current_episode = 0
         else:
             with open(save_fp) as f:
@@ -66,7 +70,7 @@ class Curriculum:
     def lesson_num(self):
         return self._current_level
 
-    def get_mission(self, last_reward, model_reset_callback=None, max_lesson=len(self._lessons)-1):
+    def get_mission(self, last_reward, model_reset_callback=None, max_lesson=None):
         # Run this check after finding the mission, so we have a mission to give on the last iteration
         if self._successes.all():
             # Agent has successfully completed the lesson the desired number of times.
@@ -77,13 +81,14 @@ class Curriculum:
             if model_reset_callback is not None:
                 if (self._current_level <= len(self._lessons) and
                     self._lessons[self._current_level].set_learning_schedule):
-                    model_reset_callback(num_episodes=self._lessons.max_episodes)
+                    model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
                 else:
                     model_reset_callback()
 
-        if ((self._current_level >= len(self._lessons)) or
+        if ((max_lesson is not None and self._current_level > max_lesson) or
+            (self._current_level >= len(self._lessons)) or
             (self._current_episode >= self._lessons[self._current_level].max_episodes)):
-            return (None, None)
+            return (None, None, None)
 
         self._successes[self._current_episode % self._successes.size] = (
                 last_reward >= self._current_target_reward
@@ -97,9 +102,9 @@ class Curriculum:
             )
         self._current_episode += 1
 
-
+        max_episode_time = self._lessons[self._current_level].max_episode_time
         self._current_target_reward = target_reward
-        return (bp, start_pos)
+        return (bp, start_pos, max_episode_time)
 
     def get_demo_mission(self):
         # Return a mission without treating this as training, don't ask for or record rewards
@@ -111,7 +116,8 @@ class Curriculum:
                 **self._lessons[level].params
             )
 
-        return bp, start_pos
+        max_episode_time = self._lessons[self._current_level].max_episode_time
+        return (bp, start_pos, max_episode_time)
 
 def _get_lesson_function(name):
     # This is where we can wire together lesson names and functions.
@@ -137,6 +143,12 @@ def _get_lesson_function(name):
         return lessonB
     elif name == 'lessonC' or name == 'lessonD':
         return lessonCD
+    elif name == 'in_front':
+        return just_in_front_lesson
+    elif name == 'turn':
+        return turn_lesson
+    elif name == 'approach':
+        return approach_lesson
     # Final case, if nothing matches
     raise ValueError("'{}' is not a recognized function.".format(name))
 
@@ -384,3 +396,49 @@ def lessonS(arena_width, arena_height, arena_length, **kwargs):
       print('blueprint:\n{}'.format(bp))
 
     return (bp, (start_x,0,start_z), buff_opt)
+
+def just_in_front_lesson(arena_width, arena_height, arena_length, target_reward=0.95, **kwargs):
+    ## Creates a blueprint block right in front of the agent, with nothing to do but place it.
+
+    # Create an empty arena blueprint
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+
+    block_x = np.random.randint(0, arena_width)
+    block_y = 0
+    block_z = np.random.randint(1, arena_length)
+    bp[block_x, block_y, block_z] = 'stone'
+
+    return (bp, (block_x, block_y, block_z - 1), target_reward)
+
+def turn_lesson(arena_width, arena_height, arena_length, target_reward=0.95, **kwargs):
+    ## Creates a blueprint block to the side of the agent.
+
+    # Create an empty arena blueprint
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+
+    block_x = np.random.randint(1, arena_width-1)
+    block_y = 0
+    block_z = np.random.randint(0, arena_length)
+    bp[block_x, block_y, block_z] = 'stone'
+
+    # Choose randomly whether agent is facing left or right of block
+    side = (-1)**np.random.randint(0, 2)
+
+    return (bp, (block_x + side, block_y, block_z), target_reward)
+
+def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, target_reward=0.95, **kwargs):
+    ## Creates a blueprint block a few blocks in front of the agent, with nothing to do but place it.
+
+    # Create an empty arena blueprint
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+
+    block_x = np.random.randint(0, arena_width)
+    block_y = 0
+    block_z = np.random.randint(max_distance, arena_length)
+    bp[block_x, block_y, block_z] = 'stone'
+
+    distance = np.random.randint(1, max_distance+1)
+
+    return (bp, (block_x, block_y, block_z - distance), target_reward)
+
+

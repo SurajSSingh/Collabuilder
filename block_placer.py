@@ -21,7 +21,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_BASE_NAME = 'simple_curriculum'
-VERSION_NUMBER  = '1.4'
+VERSION_NUMBER  = '2.1'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 
@@ -57,13 +57,13 @@ if __name__ == '__main__':
     if disp is None:
         disp = Display(model)
 
-    bp, start_pos = curriculum.get_demo_mission()
+    bp, start_pos, max_episode_time = curriculum.get_demo_mission()
     mission = Mission(
             blueprint        = bp,
             start_position   = start_pos,
             training         = False,
             action_delay     = 0.2,
-            max_episode_time = cfg('training', 'max_episode_time'),
+            max_episode_time = max_episode_time,
             simulated        = set_simulated,
             display          = disp
         )
