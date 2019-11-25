@@ -70,6 +70,14 @@ class Curriculum:
     def lesson_num(self):
         return self._current_level
 
+    def episode_num(self):
+        '''Episode number for this lesson only.'''
+        return self._current_episode
+
+    def pass_rate(self):
+        '''Returns the fraction of lessons passed in the most recent observation period.'''
+        return self._successes.mean()
+
     def get_mission(self, last_reward, model_reset_callback=None, max_lesson=None):
         # Run this check after finding the mission, so we have a mission to give on the last iteration
         if self._successes.all():

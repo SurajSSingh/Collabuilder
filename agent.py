@@ -134,6 +134,9 @@ class RLearner:
     def name(self):
         return self._name
 
+    def epsilon(self):
+        return self._epsilon
+
     def act(self, last_reward, next_observation):
         # Update model based on last_reward:
 

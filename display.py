@@ -168,3 +168,28 @@ class QSummary:
                         (False, True ): '#CC2222',
                         (False, False): '#441111'
                     }[(arch.optimal_action == action, positive)])
+
+class TextDisplay:
+    def __init__(self, params, title='Display'):
+        '''Constructs a text display, where params is a dictionary.
+Keys are labels, values are functions that generate an updated value to display.'''
+        self._labels = {}
+
+        self._root = tk.Tk()
+        self._root.wm_title(title)
+        self._root.configure(background='black')
+
+        tk.Label(self._root, text=title, font=('Arial', 24), background='black', foreground='white').grid(row=0, columnspan=2)
+        for i,(label,fn) in enumerate(params.items(), 1):
+            tk.Label(self._root, text=label, font=('Arial', 20), background='black', foreground='white').grid(row=i, column=0, sticky=tk.W)
+            text_var = tk.StringVar(self._root)
+            text_var.set('---')
+            tk.Label(self._root, textvariable=text_var, font=('Arial', 20), background='black', foreground='white').grid(row=i, column=1, sticky=tk.E)
+            self._labels[label] = (fn, text_var)
+
+        self._root.update()
+
+    def update(self):
+        for fn, text_var in self._labels.values():
+            text_var.set(fn())
+        self._root.update()

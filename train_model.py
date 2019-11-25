@@ -43,6 +43,16 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 cfg('arena', 'length'),
             ), model)
 
+    if plot_stats or show_qsummary:
+        from display import TextDisplay
+        text_display = TextDisplay({
+                "Lesson #" : (lambda: '{}'.format(curriculum.lesson_num())),
+                "Episode #" : (lambda: '{}'.format(curriculum.episode_num())),
+                "Total Episodes": (lambda: '{}'.format(episode_num)),
+                "Epsilon"  : (lambda: '{:.1f}%'.format(100*model.epsilon())),
+                "Pass Rate": (lambda: '{:.1f}%'.format(100*curriculum.pass_rate()))
+            }, title=model.name())
+
     def reset_fn(*args, **kwargs):
         model.reset_learning_params(*args, **kwargs)
         if plot_stats:
@@ -53,6 +63,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     episode_num = initial_episode
     action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
     save_frequency   = cfg('training', 'save_frequency')
+    text_display.update()
 
     with open(stats_filename, 'a') as stats_file:
         if new_file:
@@ -82,6 +93,8 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 lp.add(mission_stats.length)
             if show_qsummary:
                 qsummary.update()
+            if plot_stats or show_qsummary:
+                text_display.update()
 
             print('{},{},{},{}'.format(
                     curriculum.lesson_num(),

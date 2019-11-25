@@ -21,7 +21,7 @@ else:
     print = functools.partial(print, flush=True)
 
 MODEL_BASE_NAME = 'simple_curriculum'
-VERSION_NUMBER  = '2.1'
+VERSION_NUMBER  = '2.5'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 
