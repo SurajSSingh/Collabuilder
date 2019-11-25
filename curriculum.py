@@ -34,6 +34,8 @@ class Curriculum:
         self._arena_height = cfg('arena', 'height')
         self._arena_length = cfg('arena', 'length')
         self._current_target_reward = np.inf
+        #WIP, can use this to calculate some aggregate stats in future
+        self._episode_summary = []
 
         # Load these from save file, if possible
         save_fp = (
@@ -84,6 +86,7 @@ class Curriculum:
             # Agent has successfully completed the lesson the desired number of times.
             # Advance to the next lesson
             self._current_level += 1
+            self._episode_summary.append(self._current_episode)
             self._current_episode = 0
             self._successes.fill(False)
             if model_reset_callback is not None:
