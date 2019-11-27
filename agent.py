@@ -9,7 +9,7 @@ from tensorflow.keras.layers import Dense, InputLayer
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
 
-from utils import std_load, chance, ask_int
+from utils import std_load, chance, ask_int, CHECKPOINT_DIR
 
 tf.config.threading.set_intra_op_parallelism_threads(
     ask_int('Number of intra-op threads: ', min_val=1, default=multiprocessing.cpu_count()))
@@ -69,6 +69,10 @@ class RLearner:
             return (self._X[start:end], self._Y[start:end])
 
     def __init__(self, name, cfg, load_file=None):
+        '''Creates an RLearner.
+If load_file is a valid file path, reads from that saved checkpoint.
+If load_file is None, searches for checkpoints using this name.
+If load_file is False, doesn't search for checkpoints.'''
         self._name = name
         self._save_history = cfg('training', 'save_history')
         self._inputs = cfg('inputs')
@@ -103,7 +107,8 @@ class RLearner:
         # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_episode = 0
-        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
+        if load_file is not False:
+            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
         self._target_network = clone_model(self._prediction_network)
         self._target_network.build(self._prediction_network.input_shape)
 
@@ -186,8 +191,10 @@ class RLearner:
         self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
 
     def save(self, id=None):
-        self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
+        filepath = CHECKPOINT_DIR + self._name + ('' if id is None else '.' + id) + '.hdf5'
+        self._prediction_network.save(filepath)
         self.save_history()
+        return filepath
 
     def save_history(self):
         # TODO: consider mem-mapping to deal with large history files

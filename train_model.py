@@ -63,15 +63,13 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     episode_num = initial_episode
     action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
     save_frequency   = cfg('training', 'save_frequency')
-    text_display.update()
+    if plot_stats or show_qsummary:
+        text_display.update()
 
     with open(stats_filename, 'a') as stats_file:
         if new_file:
             print(stats_header, file=stats_file, flush=True)
-        if not max_lesson:
-            bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn)
-        else:
-            bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
+        bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         while bp is not None:
             episode_num += 1
             mission = Mission(
@@ -106,7 +104,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 save_id = 'epoch_{:09d}'.format(episode_num)
                 model.save(save_id)
                 curriculum.save(save_id)
-            bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn)
+            bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         save_id = 'epoch_{:09d}'.format(episode_num)
         model.save(save_id)
         curriculum.save(save_id)

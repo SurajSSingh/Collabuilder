@@ -16,7 +16,12 @@ Lesson = namedtuple('Lesson', [
 
 class Curriculum:
     def __init__(self, cfg, name, load_file=None):
+        '''Create a Curriculum based on given config.
+If load_file is a valid file path, read from that save file instead.
+If load_file is None, look for save files with correct name, and ask user to load from those.
+If load_file is False, do not look for save files.'''
         self._name = 'curriculum.' + name
+        print("DEBUG - name = ", self._name)
         self._max_lesson_length = cfg('curriculum', 'max_lesson_length')
         self._default_episode_time = cfg('training', 'num_episodes')
         self._lessons = [
@@ -39,11 +44,12 @@ class Curriculum:
 
         # Load these from save file, if possible
         save_fp = (
+            None if load_file is False else
             load_file if load_file is not None else
             pick_file(CHECKPOINT_DIR + self._name + '*.json',
-                prompt='Choose curriculum checkpoint for ' + self._name,
-                none_prompt='Do not load curriculum checkpoint.',
-                failure_prompt='No curriculum checkpoint. Starting anew...')
+                prompt=f'Choose curriculum checkpoint for {self._name}',
+                none_prompt=f'Do not load curriculum checkpoint for {self._name}.',
+                failure_prompt=f'No curriculum checkpoint for {self._name}.')
             )
         if save_fp is None:
             # Start off before the first lesson, to correctly trigger model resetting for the first lesson
@@ -58,12 +64,14 @@ class Curriculum:
                 self._current_episode = saved_data['current_episode']
 
     def save(self, id):
-        with open(CHECKPOINT_DIR + self._name + id + '.json', 'w') as f:
+        filepath = CHECKPOINT_DIR + self._name + id + '.json'
+        with open(filepath, 'w') as f:
             json.dump({
                     'current_level': self._current_level,
                     'current_episode': self._current_episode,
                     'successes': self._successes.tolist()
                 }, f)
+        return filepath
 
     def is_completed(self):
         '''Returns True if curriculum was completed successfully.'''
@@ -82,6 +90,8 @@ class Curriculum:
 
     def get_mission(self, last_reward, model_reset_callback=None, max_lesson=None):
         # Run this check after finding the mission, so we have a mission to give on the last iteration
+        print("DEBUG -", self._name, "._successes =", self._successes)
+        print("DEBUG -", self._name, "max_lesson =", max_lesson)
         if self._successes.all():
             # Agent has successfully completed the lesson the desired number of times.
             # Advance to the next lesson
@@ -90,7 +100,7 @@ class Curriculum:
             self._current_episode = 0
             self._successes.fill(False)
             if model_reset_callback is not None:
-                if (self._current_level <= len(self._lessons) and
+                if (self._current_level < len(self._lessons) and
                     self._lessons[self._current_level].set_learning_schedule):
                     model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
                 else:
