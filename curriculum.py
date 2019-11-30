@@ -21,7 +21,6 @@ If load_file is a valid file path, read from that save file instead.
 If load_file is None, look for save files with correct name, and ask user to load from those.
 If load_file is False, do not look for save files.'''
         self._name = 'curriculum.' + name
-        print("DEBUG - name = ", self._name)
         self._max_lesson_length = cfg('curriculum', 'max_lesson_length')
         self._default_episode_time = cfg('training', 'num_episodes')
         self._lessons = [
@@ -90,8 +89,6 @@ If load_file is False, do not look for save files.'''
 
     def get_mission(self, last_reward, model_reset_callback=None, max_lesson=None):
         # Run this check after finding the mission, so we have a mission to give on the last iteration
-        print("DEBUG -", self._name, "._successes =", self._successes)
-        print("DEBUG -", self._name, "max_lesson =", max_lesson)
         if self._successes.all():
             # Agent has successfully completed the lesson the desired number of times.
             # Advance to the next lesson

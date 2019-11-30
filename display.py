@@ -29,7 +29,7 @@ class Display:
         self._fig.show()
 
     def update(self, world_model):
-        bp, wd = world_model.get_observation()
+        bp, wd = world_model.get_full_observation()
         plt_bp = np.flip(bp.transpose( (0,2,1) ), 0)
         plt_wd = np.flip(wd.transpose( (0,2,1) ), 0)
         not_air = (plt_bp != 'air') | (plt_wd != 'air')

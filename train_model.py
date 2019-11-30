@@ -36,12 +36,22 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
 
     if show_qsummary:
         from display import QSummary
-        from archetypes import StandardArchetypes
-        qsummary = QSummary(StandardArchetypes(
+        from archetypes import StandardArchetypes, Archetype
+        archs = StandardArchetypes(
                 cfg('arena', 'width'),
                 cfg('arena', 'height'),
                 cfg('arena', 'length'),
-            ), model)
+            )
+        if not cfg('agent', 'use_full_observation', default=True):
+            from world_model import WorldModel
+            lateral  = (cfg('agent', 'observation_width') - 1) // 2
+            vertical = (cfg('agent', 'observation_height') - 1) // 2
+            archs = [Archetype(
+                    WorldModel.full_to_ac(arch.world, lateral, vertical),
+                    arch.name,
+                    arch.optimal_action)
+                for arch in archs]
+        qsummary = QSummary(archs, model)
 
     if plot_stats or show_qsummary:
         from display import TextDisplay

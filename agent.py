@@ -82,11 +82,19 @@ If load_file is False, doesn't search for checkpoints.'''
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
         self._prediction_network = Sequential()
         # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-        self._prediction_network.add(InputLayer(input_shape=(2,
+        self._prediction_network.add(InputLayer(input_shape=(
+            (2,
                 cfg('arena', 'width'),
                 cfg('arena', 'height'),
                 cfg('arena', 'length'),
-                len(self._inputs)) ))
+                len(self._inputs))
+            if cfg('agent', 'use_full_observation', default=True) else
+            (2,
+                cfg('agent', 'observation_width'),
+                cfg('agent', 'observation_height'),
+                cfg('agent', 'observation_width'),
+                len(self._inputs))
+            )))
 
         # Now, load layers from config file and build them out:
         for layer_str in cfg('agent', 'layers'):
@@ -97,6 +105,8 @@ If load_file is False, doesn't search for checkpoints.'''
                         arena_width  = cfg('arena', 'width'),
                         arena_height = cfg('arena', 'height'),
                         arena_length = cfg('arena', 'length'),
+                        observation_width  = cfg('agent', 'observation_width', default=0),
+                        observation_height = cfg('agent', 'observation_height', default=0),
                         num_inputs   = len(cfg('inputs')),
                         num_actions  = len(cfg('actions'))
                     ))
