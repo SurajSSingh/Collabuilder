@@ -159,8 +159,8 @@ def _get_lesson_function(name):
         return lessonA
     elif name == 'lessonB':
         return lessonB
-    elif name == 'lessonC' or name == 'lessonD':
-        return lessonCD
+    elif name in ['lessonC','lessonD','lessonE','lessonF','lessonG']:
+        return lessonMB
     elif name == 'in_front':
         return just_in_front_lesson
     elif name == 'turn':
@@ -211,22 +211,12 @@ def lessonB(arena_width, arena_height, arena_length, **kwargs):
     return (bp, (start_x, 0, start_z), MAX_REWARD-BUFFER)
 
 
-def _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, num_of_block):
+def _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, k_val, num_of_block):
     ## Creates an randomly scattered block arrangement
     set_of_blocks = set()
     while len(set_of_blocks) < num_of_block:
-        block_x = np.random.randint(0,arena_width)
-        block_z = np.random.randint(0,arena_length)
-        if block_x == agent_pos_x:
-            if block_x + 1 == arena_width:
-                block_x-=1
-            else:
-                block_x+=1
-        if block_z == agent_pos_z:
-            if block_z + 1 == arena_length:
-                block_z-=1
-            else:
-                block_z+=1
+        block_x = np.random.randint(0+k_val,arena_width-k_val)
+        block_z = np.random.randint(0+k_val,arena_length-k_val)
         set_of_blocks.add((block_x,block_z))
     return set_of_blocks
 
@@ -236,23 +226,24 @@ def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos
     ## types of arrangement include: lines, corners, floor
     org_array = ["xline","zline","blcorner","brcorner", "tlcorner","trcorner"]
     # Create and add the starting location
-    # (make sure there is no conflict with the agent postion)
-    if floor_size != None:
+    # use k value to pad out from the edge
+    if org_type == "floor" and floor_size != None:
         block_x = np.random.randint(0,arena_width-(k_val*2))
         block_z = np.random.randint(0,arena_length-(k_val*2))
     else:
         block_x = np.random.randint(0+k_val,arena_width-k_val)
         block_z = np.random.randint(0+k_val,arena_length-k_val)
-    if block_x == agent_pos_x:
-        if block_x + 1 == arena_width:
-            block_x-=1
-        else:
-            block_x+=1
-    if block_z == agent_pos_z:
-        if block_z + 1 == arena_length:
-            block_z-=1
-        else:
-            block_z+=1
+    # # Check if agent inside starting block
+    # if block_x == agent_pos_x:
+    #     if block_x + 1 == arena_width:
+    #         block_x-=1
+    #     else:
+    #         block_x+=1
+    # if block_z == agent_pos_z:
+    #     if block_z + 1 == arena_length:
+    #         block_z-=1
+    #     else:
+    #         block_z+=1
     set_of_blocks.add((block_x,block_z))
 
     curr_step = 1;
@@ -302,10 +293,22 @@ def _organized_block_placement(arena_width, arena_length, agent_pos_x, agent_pos
                 set_of_blocks.add(((block_x+z_val)%arena_width,(block_z+x_val)%arena_length))
     else:
         # Could not find organization type, so just do random
-        return _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, num_of_block)
+        return _random_block_placement(arena_width, arena_length, agent_pos_x, agent_pos_z, k_val, num_of_block)
     return set_of_blocks
 
-def lessonCD(arena_width, arena_height, arena_length, **kwargs):
+def _tower_builder(postions, min_height=2, max_height=2, random_height=False):
+    new_pos = list()
+    for pos in postions:
+        # If random height, make tower n-randomly high
+        if random_height:
+            for i in range(1,np.random.randint(min_height,max_height)):
+                new_pos.append((pos[0],i,pos[1]))
+        else:
+            for i in range(1,max_height):
+                new_pos.append((pos[0],i,pos[1]))
+    return new_pos
+
+def lessonMB(arena_width, arena_height, arena_length, **kwargs):
     ## Create a multi-block lesson, maybe organized or unorganized
 
     # Create an empty arena blueprint
@@ -322,6 +325,7 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
 
     # Create and place the blocks
     # Positions = (x,z); no y since single layer
+    positions = None
     if 'organized' in kwargs:
         fsx = kwargs['floor_size_x'] if 'floor_size_x' in kwargs else (number_of_block+1)//2
         fsz = kwargs['floor_size_z'] if 'floor_size_z' in kwargs else (number_of_block+1)//2
@@ -331,11 +335,21 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
         for pos in positions:
             bp[pos[0]][0][pos[1]] = 'stone'
     else:
-        positions = _random_block_placement(arena_width,arena_length, start_x, start_z, number_of_block)
+        k_value = kwargs['k'] if 'k' in kwargs else 0
+        positions = _random_block_placement(arena_width,arena_length, start_x, start_z, k_value, number_of_block)
         for pos in positions:
             bp[pos[0]][0][pos[1]] = 'stone'
             x_sum += (abs(start_x - pos[0])-1)
             z_sum += (abs(start_z - pos[1])-1)
+
+    # Add height to blueprint if required
+    if positions != None and 'tower' in kwargs:
+        mx_h = kwargs['max_height'] if 'max_height' in kwargs else arena_height
+        mn_h = kwargs['min_height'] if 'min_height' in kwargs else 2
+        rand_height = True if 'random_height' in kwargs else False
+        tower_positions = _tower_builder(positions, min_height=mn_h, max_height=mx_h, random_height=rand_height)
+        for pos in tower_positions:
+            bp[pos[0]][pos[1]][pos[2]] = 'stone'
 
     # Find most optimal route
     # Currently hardcoded cost
@@ -352,64 +366,6 @@ def lessonCD(arena_width, arena_height, arena_length, **kwargs):
       print('arena shape: ({}, {}, {})'.format(arena_width, arena_height, arena_length))
       print('agent start: ({}, 0, {})'.format(start_x,start_z))
       print('blocks position: {}'.format(positions))
-      print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
-      print('blueprint:\n{}'.format(bp))
-
-    return (bp, (start_x,0,start_z), buff_opt)
-
-def lessonS(arena_width, arena_height, arena_length, **kwargs):
-    ## Create a single tower lesson
-
-    # Create an empty arena blueprint
-    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-
-    # Randomize start
-    start_x = np.random.randint(0,arena_width)
-    start_z = np.random.randint(0,arena_length)
-
-    # Randomly choose a position in the arena
-    # and make it a tower of some height
-    # bounded by min_height and max_height
-    min_height = kwargs['min_h'] if 'min_h' in kwargs else 1
-    max_height = kwargs['max_h'] if 'max_h' in kwargs else arena_height
-    block_x = np.random.randint(0,arena_width)
-    block_y = np.random.randint(min_height,max_height)
-    block_z = np.random.randint(0,arena_length)
-
-    # Offset if tower and agent share the same position
-    if block_x == start_x:
-        if block_x + 1 == arena_width:
-            block_x-=1
-        else:
-            block_x+=1
-    if block_z == start_z:
-        if block_z + 1 == arena_length:
-            block_z-=1
-        else:
-            block_z+=1
-
-    # Add the stone section to the blueprint
-    current_height = 0
-    while current_height <= block_y:
-        bp[block_x][current_height][block_z] = 'stone'
-        current_height+=1
-
-    # Find most optimal route
-    # Currently hardcoded cost
-    movement_cost = 1
-    placement_cost = 2
-    optimum = 1#(abs(block_x-(start_x-1))*movement_cost) + (abs(block_z-(start_z-1))*movement_cost) + (block_y*placement_cost)
-
-    # Allow near optimal buffer
-    buff = 'buff' if 'buff' in kwargs else 0.5
-    buff_opt = optimum - buff
-
-    # Debug Print Statements
-    if 'debug' in kwargs:
-      print('arena shape: ({}, {}, {})'.format(arena_width, arena_height, arena_length))
-      print('agent start: ({}, 0, {})'.format(start_x,start_z))
-      print('height range: ({}, {})'.format(min_height,max_height))
-      print('tower postion: ({}, [0:{}], {})'.format(block_x,block_y,block_z))
       print('buffered optimal: between {} and {}'.format(buff_opt, optimum))
       print('blueprint:\n{}'.format(bp))
 
@@ -458,5 +414,3 @@ def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, tar
     distance = np.random.randint(1, max_distance+1)
 
     return (bp, (block_x, block_y, block_z - distance), target_reward)
-
-
