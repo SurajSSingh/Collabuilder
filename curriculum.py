@@ -63,7 +63,7 @@ If load_file is False, do not look for save files.'''
                 self._current_episode = saved_data['current_episode']
 
     def save(self, id):
-        filepath = CHECKPOINT_DIR + self._name + id + '.json'
+        filepath = CHECKPOINT_DIR + self._name + '.' + id + '.json'
         with open(filepath, 'w') as f:
             json.dump({
                     'current_level': self._current_level,

@@ -108,7 +108,7 @@ class ModelTester:
                     'name': md.name,
                     'activated': md.activated,
                     'completed': md.completed,
-                    'model_file': md.model.save(id=id),
+                    'model_file': md.model.save(id=f'{id}.epoch_{md.curriculum.episode_num():09d}'),
                     'curriculum_file': md.curriculum.save(id=id)
                 }
                 for md in self.modelList
