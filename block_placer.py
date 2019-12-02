@@ -20,8 +20,8 @@ if sys.version_info[0] == 2:
 else:
     print = functools.partial(print, flush=True)
 
-MODEL_BASE_NAME = 'simple_curriculum'
-VERSION_NUMBER  = '3.0'
+MODEL_BASE_NAME = 'branch_test'
+VERSION_NUMBER  = '1.0'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 
@@ -70,4 +70,3 @@ if __name__ == '__main__':
     run_mission(model, mission, cfg, demo=True)
 
     input('Press ENTER to exit...')
-

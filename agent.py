@@ -3,9 +3,9 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import multiprocessing
 
-# from tensorflow.keras import backend as K
-from tensorflow.keras.models import Sequential, clone_model
-from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Sequential, clone_model, Model
+from tensorflow.keras.layers import Dense, InputLayer, Lambda, Input
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
 
@@ -80,41 +80,61 @@ If load_file is False, doesn't search for checkpoints.'''
         self._actions = cfg('actions')
         self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
-        self._prediction_network = Sequential()
-        # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-        self._prediction_network.add(InputLayer(input_shape=(
-            (2,
-                cfg('arena', 'width'),
-                cfg('arena', 'height'),
-                cfg('arena', 'length'),
-                len(self._inputs))
-            if cfg('agent', 'use_full_observation', default=True) else
-            (2,
-                cfg('agent', 'observation_width'),
-                cfg('agent', 'observation_height'),
-                cfg('agent', 'observation_width'),
-                len(self._inputs))
-            )))
+        if cfg('agent', 'non_sequnetial', default=False):
+            self._prediction_network = self._build_NS_Model(input=Input(shape=(
+                                                            (2,
+                                                                cfg('arena', 'width'),
+                                                                cfg('arena', 'height'),
+                                                                cfg('arena', 'length'),
+                                                                len(self._inputs))
+                                                            if cfg('agent', 'use_full_observation', default=True) else
+                                                            (2,
+                                                                cfg('agent', 'observation_width'),
+                                                                cfg('agent', 'observation_height'),
+                                                                cfg('agent', 'observation_width'),
+                                                                len(self._inputs))
+                                                            )),
+                                                        layers_list=cfg('agent', 'layers'),
+                                                        cfg=cfg)
+        else:
+            self._prediction_network = Sequential()
+            # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
+            self._prediction_network.add(InputLayer(input_shape=(
+                (2,
+                    cfg('arena', 'width'),
+                    cfg('arena', 'height'),
+                    cfg('arena', 'length'),
+                    len(self._inputs))
+                if cfg('agent', 'use_full_observation', default=True) else
+                (2,
+                    cfg('agent', 'observation_width'),
+                    cfg('agent', 'observation_height'),
+                    cfg('agent', 'observation_width'),
+                    len(self._inputs))
+                )))
 
-        # Now, load layers from config file and build them out:
-        for layer_str in cfg('agent', 'layers'):
-            # Don't try to process comments
-            if layer_str.lstrip()[0] != '#':
-                # Dangerous to use eval, but convenient for our purposes.
-                new_layer = eval(layer_str.format(
-                        arena_width  = cfg('arena', 'width'),
-                        arena_height = cfg('arena', 'height'),
-                        arena_length = cfg('arena', 'length'),
-                        observation_width  = cfg('agent', 'observation_width', default=0),
-                        observation_height = cfg('agent', 'observation_height', default=0),
-                        num_inputs   = len(cfg('inputs')),
-                        num_actions  = len(cfg('actions'))
-                    ))
-                self._prediction_network.add(new_layer)
-        if cfg('agent', 'auto_final_layer', default=True):
-            # Output one-hot encoded action
-            self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
-        # Otherwise, user should provide such a layer. Model will fail later if they didn't.
+            # Now, load layers from config file and build them out:
+            for layer_str in cfg('agent', 'layers'):
+                # Don't try to process comments
+                if layer_str.lstrip()[0] != '#':
+                    # Dangerous to use eval, but convenient for our purposes.
+                    new_layer = eval(layer_str.format(
+                            arena_width  = cfg('arena', 'width'),
+                            arena_height = cfg('arena', 'height'),
+                            arena_length = cfg('arena', 'length'),
+                            observation_width  = cfg('agent', 'observation_width', default=0),
+                            observation_height = cfg('agent', 'observation_height', default=0),
+                            num_inputs   = len(cfg('inputs')),
+                            num_actions  = len(cfg('actions'))
+                        ))
+                    self._prediction_network.add(new_layer)
+                # If it is a list, branch off
+                elif type(layer_str) == list:
+                    print()
+            if cfg('agent', 'auto_final_layer', default=True):
+                # Output one-hot encoded action
+                self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
+            # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_episode = 0
         if load_file is not False:
@@ -145,6 +165,33 @@ If load_file is False, doesn't search for checkpoints.'''
         if self._iters_since_target_update >= self._target_update_frequency:
             self._target_network.set_weights(self._prediction_network.get_weights())
             self._iters_since_target_update = 0
+
+    def _build_NS_Model(self,input,layers_list,cfg,main_branch=True):
+        interm_layer = list()
+        interm_layer.append(input)
+        for layer in layers_list:
+            if type(layer) == str and layer.lstrip()[0:1] != '#':
+                if layer.lstrip()[0:2] == 'M:':
+                    # Merge Interm layers
+                    interm_layer = [eval(layer[2:].format(num_actions  = len(cfg('actions'))))(interm_layer)]
+                else:
+                    interm_layer.append(eval(layer.format(
+                                    arena_width  = cfg('arena', 'width'),
+                                    arena_height = cfg('arena', 'height'),
+                                    arena_length = cfg('arena', 'length'),
+                                    observation_width  = cfg('agent', 'observation_width', default=0),
+                                    observation_height = cfg('agent', 'observation_height', default=0),
+                                    num_inputs   = len(cfg('inputs')),
+                                    num_actions  = len(cfg('actions')))
+                                )(interm_layer[-1]))
+            elif type(layer) == list:
+                interm_layer.append(self._build_NS_Model(interm_layer[-1],layer,cfg,main_branch=False))
+        if main_branch:
+            # return the built model
+            return Model(inputs=interm_layer[0],outputs=interm_layer[-1])
+        else:
+            # return the built branch
+            return interm_layer[-1]
 
     def name(self):
         return self._name
