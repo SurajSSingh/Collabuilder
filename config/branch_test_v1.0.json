@@ -27,9 +27,7 @@
               ],
               "# This merges the model:",
               "M:keras.layers.Lambda(lambda x: x[1]-K.mean(x[1])+x[0], ({num_actions},))"
-            ],
-            "# Final layer to clean up merge",
-            "keras.layers.Dense({num_actions}, activation='linear')"
+            ]
         ],
         "auto_final_layer": false,
         "use_full_observation": false,

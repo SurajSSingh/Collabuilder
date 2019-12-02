@@ -8,6 +8,7 @@ from tensorflow.keras.models import Sequential, clone_model, Model
 from tensorflow.keras.layers import Dense, InputLayer, Lambda, Input
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
+# from tensorflow.keras.utils import plot_model
 
 from utils import std_load, chance, ask_int, CHECKPOINT_DIR
 
@@ -136,6 +137,7 @@ If load_file is False, doesn't search for checkpoints.'''
                 self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
             # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
+        # plot_model(self._prediction_network, to_file='prediction_model.png')
         self.start_episode = 0
         if load_file is not False:
             self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
@@ -172,8 +174,8 @@ If load_file is False, doesn't search for checkpoints.'''
         for layer in layers_list:
             if type(layer) == str and layer.lstrip()[0:1] != '#':
                 if layer.lstrip()[0:2] == 'M:':
-                    # Merge Interm layers
-                    interm_layer = [eval(layer[2:].format(num_actions  = len(cfg('actions'))))(interm_layer)]
+                    # Merge Interm layers (except input since that is only used in the branched layers)
+                    interm_layer = [eval(layer[2:].format(num_actions  = len(cfg('actions'))))(interm_layer[1:])]
                 else:
                     interm_layer.append(eval(layer.format(
                                     arena_width  = cfg('arena', 'width'),
@@ -185,12 +187,14 @@ If load_file is False, doesn't search for checkpoints.'''
                                     num_actions  = len(cfg('actions')))
                                 )(interm_layer[-1]))
             elif type(layer) == list:
-                interm_layer.append(self._build_NS_Model(interm_layer[-1],layer,cfg,main_branch=False))
+                layer_num = -1 if main_branch else 0
+                mb = True if type(layer[0]) == str and layer[0].lstrip()[0:1] == 'B' else False
+                interm_layer.append(self._build_NS_Model(interm_layer[layer_num],layer,cfg,main_branch=mb))
         if main_branch:
             # return the built model
             return Model(inputs=interm_layer[0],outputs=interm_layer[-1])
         else:
-            # return the built branch
+            # return the built branch (should be last layer)
             return interm_layer[-1]
 
     def name(self):
