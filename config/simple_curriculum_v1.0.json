@@ -41,7 +41,7 @@
             "mission_complete": 1
         }
     },
-    "currciulum": {
+    "curriculum": {
         "observation_period": 30,
         "max_lesson_length": 1200,
         "lessons": [

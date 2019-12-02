@@ -9,7 +9,7 @@ from tensorflow.keras.layers import Dense, InputLayer
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
 
-from utils import std_load, chance, ask_int
+from utils import std_load, chance, ask_int, CHECKPOINT_DIR
 
 tf.config.threading.set_intra_op_parallelism_threads(
     ask_int('Number of intra-op threads: ', min_val=1, default=multiprocessing.cpu_count()))
@@ -68,7 +68,11 @@ class RLearner:
             end   = start + self._batch_size
             return (self._X[start:end], self._Y[start:end])
 
-    def __init__(self, name, cfg):
+    def __init__(self, name, cfg, load_file=None):
+        '''Creates an RLearner.
+If load_file is a valid file path, reads from that saved checkpoint.
+If load_file is None, searches for checkpoints using this name.
+If load_file is False, doesn't search for checkpoints.'''
         self._name = name
         self._save_history = cfg('training', 'save_history')
         self._inputs = cfg('inputs')
@@ -78,11 +82,19 @@ class RLearner:
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
         self._prediction_network = Sequential()
         # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-        self._prediction_network.add(InputLayer(input_shape=(2,
+        self._prediction_network.add(InputLayer(input_shape=(
+            (2,
                 cfg('arena', 'width'),
                 cfg('arena', 'height'),
                 cfg('arena', 'length'),
-                len(self._inputs)) ))
+                len(self._inputs))
+            if cfg('agent', 'use_full_observation', default=True) else
+            (2,
+                cfg('agent', 'observation_width'),
+                cfg('agent', 'observation_height'),
+                cfg('agent', 'observation_width'),
+                len(self._inputs))
+            )))
 
         # Now, load layers from config file and build them out:
         for layer_str in cfg('agent', 'layers'):
@@ -93,6 +105,8 @@ class RLearner:
                         arena_width  = cfg('arena', 'width'),
                         arena_height = cfg('arena', 'height'),
                         arena_length = cfg('arena', 'length'),
+                        observation_width  = cfg('agent', 'observation_width', default=0),
+                        observation_height = cfg('agent', 'observation_height', default=0),
                         num_inputs   = len(cfg('inputs')),
                         num_actions  = len(cfg('actions'))
                     ))
@@ -103,14 +117,17 @@ class RLearner:
         # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
         self.start_episode = 0
-        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network)
+        if load_file is not False:
+            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
         self._target_network = clone_model(self._prediction_network)
         self._target_network.build(self._prediction_network.input_shape)
 
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
-        self._epsilon_decay = (cfg('training', 'final_epsilon') / self._initial_epsilon)**(1.0/cfg('training', 'num_episodes'))
+        self._final_epsilon   = cfg('training', 'final_epsilon')
+        self._num_episodes    = cfg('training', 'num_episodes')
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
         self._epsilon = self._initial_epsilon * (self._epsilon_decay**(self.start_episode + 1))
         self._discount = 0.95
         self._last_obs = None
@@ -131,6 +148,9 @@ class RLearner:
 
     def name(self):
         return self._name
+
+    def epsilon(self):
+        return self._epsilon
 
     def act(self, last_reward, next_observation):
         # Update model based on last_reward:
@@ -174,12 +194,17 @@ class RLearner:
         self._last_action = None
         self._epsilon *= self._epsilon_decay
 
-    def reset_learning_params(self):
+    def reset_learning_params(self, num_episodes=None):
+        if num_episodes is not None:
+            self._num_episodes = num_episodes
         self._epsilon = self._initial_epsilon
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
 
     def save(self, id=None):
-        self._prediction_network.save('checkpoint/' + self._name + ('' if id is None else '.' + id) + '.hdf5')
+        filepath = CHECKPOINT_DIR + self._name + ('' if id is None else '.' + id) + '.hdf5'
+        self._prediction_network.save(filepath)
         self.save_history()
+        return filepath
 
     def save_history(self):
         # TODO: consider mem-mapping to deal with large history files

@@ -3,8 +3,9 @@ import numpy as np
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False):
-    stats_filename = 'stats/' + model.name() + '.csv'
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None):
+    if not stats_filename:
+        stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
 
     try:
@@ -21,7 +22,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
             comments='')
         del stats_data
         new_file = False
-    except OSError: # File not found
+    except (OSError, FileNotFoundError): # File not found
         rp_data = []
         lp_data = []
         separators = []
@@ -35,15 +36,35 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
 
     if show_qsummary:
         from display import QSummary
-        from archetypes import StandardArchetypes
-        qsummary = QSummary(StandardArchetypes(
+        from archetypes import StandardArchetypes, Archetype
+        archs = StandardArchetypes(
                 cfg('arena', 'width'),
                 cfg('arena', 'height'),
                 cfg('arena', 'length'),
-            ), model)
+            )
+        if not cfg('agent', 'use_full_observation', default=True):
+            from world_model import WorldModel
+            lateral  = (cfg('agent', 'observation_width') - 1) // 2
+            vertical = (cfg('agent', 'observation_height') - 1) // 2
+            archs = [Archetype(
+                    WorldModel.full_to_ac(arch.world, lateral, vertical),
+                    arch.name,
+                    arch.optimal_action)
+                for arch in archs]
+        qsummary = QSummary(archs, model)
 
-    def reset_fn():
-        model.reset_learning_params()
+    if plot_stats or show_qsummary:
+        from display import TextDisplay
+        text_display = TextDisplay({
+                "Lesson #" : (lambda: '{}'.format(curriculum.lesson_num())),
+                "Episode #" : (lambda: '{}'.format(curriculum.episode_num())),
+                "Total Episodes": (lambda: '{}'.format(episode_num)),
+                "Epsilon"  : (lambda: '{:.1f}%'.format(100*model.epsilon())),
+                "Pass Rate": (lambda: '{:.1f}%'.format(100*curriculum.pass_rate()))
+            }, title=model.name())
+
+    def reset_fn(*args, **kwargs):
+        model.reset_learning_params(*args, **kwargs)
         if plot_stats:
             rp.add_sep()
             lp.add_sep()
@@ -51,13 +72,14 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     last_reward = -np.inf
     episode_num = initial_episode
     action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
-    max_episode_time = cfg('training', 'max_episode_time')
     save_frequency   = cfg('training', 'save_frequency')
+    if plot_stats or show_qsummary:
+        text_display.update()
 
     with open(stats_filename, 'a') as stats_file:
         if new_file:
             print(stats_header, file=stats_file, flush=True)
-        bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
+        bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         while bp is not None:
             episode_num += 1
             mission = Mission(
@@ -79,6 +101,8 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 lp.add(mission_stats.length)
             if show_qsummary:
                 qsummary.update()
+            if plot_stats or show_qsummary:
+                text_display.update()
 
             print('{},{},{},{}'.format(
                     curriculum.lesson_num(),
@@ -90,7 +114,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 save_id = 'epoch_{:09d}'.format(episode_num)
                 model.save(save_id)
                 curriculum.save(save_id)
-            bp, start_pos = curriculum.get_mission(last_reward, reset_fn)
+            bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         save_id = 'epoch_{:09d}'.format(episode_num)
         model.save(save_id)
         curriculum.save(save_id)

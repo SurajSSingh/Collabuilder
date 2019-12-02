@@ -14,6 +14,13 @@ class WorldModel:
         self._arena_height  = self._cfg('arena', 'height')
         self._arena_length  = self._cfg('arena', 'length')
         self._reward_weight = self._cfg('training', 'reward_weight')
+        self._use_full_observation = self._cfg('agent', 'use_full_observation', default=True)
+        if not self._use_full_observation:
+            self._obs_lateral  = (self._cfg('agent', 'observation_width') - 1) // 2
+            self._obs_vertical = (self._cfg('agent', 'observation_height') - 1) // 2
+        else:
+            self._obs_lateral  = None
+            self._obs_vertical = None
         self._simulated = simulated
         self._bp        = blueprint
         self._str_type  = '<U{}'.format(max(len(s) for s in self._cfg('inputs')))
@@ -54,6 +61,9 @@ class WorldModel:
         output._rot_bp                = self._rot_bp.copy()
         output._str_type              = self._str_type
         output._world                 = self._world.copy()
+        output._use_full_observation  = self._use_full_observation
+        output._obs_lateral           = self._obs_lateral
+        output._obs_vertical          = self._obs_vertical
         return output
 
     def update(self, raw_obs):
@@ -154,7 +164,39 @@ class WorldModel:
         return np.ravel(np.where(self._world == 'agent'))
 
     def get_observation(self):
+        if self._use_full_observation:
+            return self.get_full_observation()
+        else:
+            return self.get_ac_observation(self._obs_lateral, self._obs_vertical)
+
+    def get_full_observation(self):
         return np.array([self._rot_bp, self._world])
+
+    def get_ac_observation(self, lateral, vertical):
+        '''Returns a world + bp observation, centered on the agent, 2*lateral + 1 units in x and z directions, and 2*vertical + 1 units in the y direction.'''
+        return WorldModel.full_to_ac(self.get_full_observation(), lateral, vertical)
+
+    @staticmethod
+    def full_to_ac(full_obs, lateral, vertical):
+        agent_pos = np.ravel(np.where(full_obs[1] == 'agent'))
+        if agent_pos.size == 0:
+            return np.full((2, 2*lateral+1, 2*vertical+1, 2*lateral+1), fill_value='air')
+        output = np.pad(full_obs, (
+                (0,),
+                (lateral,),
+                (vertical,),
+                (lateral,)
+            ), constant_values=('air',))[
+            :,
+            # Note: the padding cancels the offset for the observation:
+            #   agent_pos[0] in padded array is agent_pos[0] - lateral in real, etc.
+            agent_pos[0] : agent_pos[0] + 2*lateral + 1,
+            agent_pos[1] : agent_pos[1] + 2*vertical + 1,
+            agent_pos[2] : agent_pos[2] + 2*lateral + 1,
+        ]
+        # Overwrite the redundant central "agent" with a blank
+        output[1, lateral, vertical, lateral] = 'air'
+        return output
 
     def num_complete(self):
         return ((self._world == self._rot_bp) & (self._rot_bp != 'air')).sum()
