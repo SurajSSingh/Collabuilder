@@ -1,5 +1,6 @@
 import os
 import json
+import gc
 from utils import get_config, pick_file, CHECKPOINT_DIR
 
 from agent import RLearner
@@ -8,6 +9,8 @@ from curriculum import Curriculum
 from train_model import train_model
 from run_mission import Mission, run_mission
 
+import tensorflow.keras.backend as K
+
 MT_Version = '1.0'
 
 class ModelData:
@@ -15,12 +18,22 @@ class ModelData:
         self.name = config_file[:-5]
         self.activated = True
         self.cfg  = lambda *args, **kwargs: get_config(config_file, *args, config_dir=config_dir, **kwargs)
-        self.model = RLearner(self.name, self.cfg, load_file=model_file)
-        self.curriculum = Curriculum(self.cfg, self.model.name(), load_file=curriculum_file)
+        self.model_file = model_file
+        # self.model = RLearner(self.name, self.cfg, load_file=model_file)
+        self.model = None
+        self.curriculum = Curriculum(self.cfg, self.name, load_file=curriculum_file)
         self.total_episodes = 0
         self.stats_filename = output_dir+self.name+'.csv'
         self.completed = False
         print(self.name)
+
+    def build_model(self):
+        self.model = RLearner(self.name, self.cfg, load_file=self.model_file)
+
+    def destroy_model(self):
+        self.model_file = self.model.save(id=f'temp.epoch_{self.total_episodes}')
+        del self.model
+        self.model = None
 
 
 class ModelTester:
@@ -82,11 +95,15 @@ class ModelTester:
                 m = self.modelList[self.current_model]
                 if m.activated:
                     #train for one lesson and output somewhere
+                    m.build_model()
                     m.total_episodes += train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename, max_lesson=self.current_lesson)
+                    K.clear_session()
+                    m.destroy_model()
+                    gc.collect()
                 self.current_model += 1
 
             for m in self.modelList:
-                if m.curriculum.lesson_num() <= self.current_lesson or m.curriculum.is_completed():
+                if m.activated and (m.curriculum.lesson_num() <= self.current_lesson or m.curriculum.is_completed()):
                     m.activated = False
                     m.completed = m.curriculum.is_completed()
                     self.summary.append(f'Model {m.name} deactivated during round {self.current_lesson}\nCompleted: {m.completed}')
@@ -111,7 +128,7 @@ class ModelTester:
                     'activated': md.activated,
                     'completed': md.completed,
                     'total_episodes': md.total_episodes,
-                    'model_file': md.model.save(id=f'{id}.epoch_{md.total_episodes:09d}'),
+                    'model_file': md.model_file,
                     'curriculum_file': md.curriculum.save(id=id)
                 }
                 for md in self.modelList
