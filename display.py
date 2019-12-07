@@ -107,6 +107,9 @@ class LivePlot:
             linestyle='--'
         )
 
+    def close(self):
+        plt.close(self._fig)
+
 class QSummary:
     """Displays a summary of important Q-values, as estimated by a model."""
     # This class draws heavily from tutorial_6 of the Malmo distribution.
