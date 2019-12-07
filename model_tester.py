@@ -17,6 +17,7 @@ class ModelData:
         self.cfg  = lambda *args, **kwargs: get_config(config_file, *args, config_dir=config_dir, **kwargs)
         self.model = RLearner(self.name, self.cfg, load_file=model_file)
         self.curriculum = Curriculum(self.cfg, self.model.name(), load_file=curriculum_file)
+        self.total_episodes = 0
         self.stats_filename = output_dir+self.name+'.csv'
         self.completed = False
         print(self.name)
@@ -66,6 +67,7 @@ class ModelTester:
                         )
                     md.activated = saved_md['activated']
                     md.completed = saved_md['completed']
+                    md.total_episodes = saved_md['total_episodes']
                     self.modelList.append(md)
                 self.summary = saved_data['summary']
                 self.current_lesson = saved_data['current_lesson']
@@ -80,7 +82,7 @@ class ModelTester:
                 m = self.modelList[self.current_model]
                 if m.activated:
                     #train for one lesson and output somewhere
-                    train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename, max_lesson=self.current_lesson)
+                    m.total_episodes += train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename, max_lesson=self.current_lesson)
                 self.current_model += 1
 
             for m in self.modelList:
@@ -108,7 +110,8 @@ class ModelTester:
                     'name': md.name,
                     'activated': md.activated,
                     'completed': md.completed,
-                    'model_file': md.model.save(id=f'{id}.epoch_{md.curriculum.episode_num():09d}'),
+                    'total_episodes': md.total_episodes,
+                    'model_file': md.model.save(id=f'{id}.epoch_{md.total_episodes:09d}'),
                     'curriculum_file': md.curriculum.save(id=id)
                 }
                 for md in self.modelList
