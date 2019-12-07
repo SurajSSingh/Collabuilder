@@ -257,6 +257,11 @@ If load_file is False, doesn't search for checkpoints.'''
         self.save_history()
         return filepath
 
+    def reload(self,save_id):
+        filename = self.save(id=save_id)
+        K.clear_session()
+        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=filename)
+
     def save_history(self):
         # TODO: consider mem-mapping to deal with large history files
         if self._save_history and len(self._unsaved_history['observation']) > 0:

@@ -197,7 +197,7 @@ def lessonA(arena_width, arena_height, arena_length, **kwargs):
     center_x = arena_width//2
     center_z = arena_length//2
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-    bp[np.random.randint(low=0+k,high=arena_width-k+1)][0][np.random.randint(low=0+k,high=arena_length-k+1)] = 'stone'
+    bp[center_x+np.random.randint(low=-k,high=k)][0][center_z+np.random.randint(low=-k,high=k)] = 'stone'
     return (bp, (center_x, 0, center_z), MAX_REWARD-BUFFER)
 
 def lessonB(arena_width, arena_height, arena_length, **kwargs):

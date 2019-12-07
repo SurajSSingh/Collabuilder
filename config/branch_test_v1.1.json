@@ -6,11 +6,10 @@
             "keras.layers.Permute((2, 3, 4, 1, 5))",
             "keras.layers.Reshape(({observation_width}, {observation_height}, {observation_width}, 2*{num_inputs}))",
             "# Convolve each input, treating the blueprint and world state as separate channels",
-            "keras.layers.Conv3D(8, (8, 4, 8), padding='same', data_format='channels_last', activation='relu')",
             "keras.layers.Conv3D(8, (4, 2, 4), padding='same', data_format='channels_last', activation='relu')",
             "keras.layers.Conv3D(8, (2, 1, 2), padding='same', data_format='channels_last', activation='relu')",
             "# max-pool features together a bit:",
-            "keras.layers.MaxPooling3D(pool_size=(4, 2, 4), data_format='channels_last')",
+            "keras.layers.MaxPooling3D(pool_size=(2, 1, 2), data_format='channels_last')",
             "# Flatten, ready for fully-connected layers:",
             "keras.layers.Flatten()",
             "# Do some thinking:",
@@ -35,15 +34,15 @@
         "observation_width": 5,
         "observation_height": 3,
         "non_sequnetial": true,
-        "reload_at_checkpoint": true
+        "reload_at_checkpoint": false
     },
     "training": {
         "num_episodes": 1000,
         "save_frequency": 50,
         "max_episode_time": 3,
-        "initial_epsilon": 0.8,
-        "final_epsilon": 0.005,
-        "overclock_factor": 5,
+        "initial_epsilon": 0.9,
+        "final_epsilon": 0.05,
+        "overclock_factor": 6,
         "save_history": false,
         "train_on_history": false,
         "history": {
@@ -90,10 +89,11 @@
               "max_episode_time": 1.5,
               "target_reward": 0.95,
               "set_learning_schedule": true
-          },{
+          },
+          {
                 "name": "lessonA",
                 "params": {
-                    "k": 7
+                    "k": 1
                 },
                 "max_episodes": 600,
                 "max_episode_time": 3,
@@ -101,10 +101,41 @@
                 "set_learning_schedule": true
             },
             {
+                  "name": "lessonA",
+                  "params": {
+                      "k": 2
+                  },
+                  "max_episodes": 600,
+                  "max_episode_time": 3,
+                  "target_reward": 0.75,
+                  "set_learning_schedule": true
+            },
+            {
+                  "name": "lessonA",
+                  "params": {
+                      "k": 4
+                  },
+                  "max_episodes": 600,
+                  "max_episode_time": 3,
+                  "target_reward": 0.75,
+                  "set_learning_schedule": true
+            },
+            {
+                  "name": "lessonA",
+                  "params": {
+                      "k": 6
+                  },
+                  "max_episodes": 600,
+                  "max_episode_time": 3,
+                  "target_reward": 0.75,
+                  "set_learning_schedule": true
+            },
+            {
                 "name": "lessonB",
                 "params": {},
                 "max_episodes": 1000,
                 "max_episode_time": 3,
+                "target_reward": 0.75,
                 "set_learning_schedule": true
             },
             {
@@ -114,6 +145,7 @@
                 },
                 "max_episodes": 1000,
                 "max_episode_time": 8,
+                "target_reward": 0.75,
                 "set_learning_schedule": true
             },
             {
@@ -134,14 +166,15 @@
                 },
                 "max_episodes": 1000,
                 "max_episode_time": 8,
+                "target_reward": 0.75,
                 "set_learning_schedule": true
             }
         ]
     },
     "arena": {
-        "width": 16,
-        "height": 8,
-        "length": 16,
+        "width": 8,
+        "height": 4,
+        "length": 8,
         "anchor": {
             "x": 0,
             "y": 5,
