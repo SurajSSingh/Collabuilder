@@ -51,9 +51,8 @@ If load_file is False, do not look for save files.'''
                 failure_prompt=f'No curriculum checkpoint for {self._name}.')
             )
         if save_fp is None:
-            # Start off before the first lesson, to correctly trigger model resetting for the first lesson
-            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=True)
-            self._current_level   = -1
+            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=False)
+            self._current_level   = 0
             self._current_episode = 0
         else:
             with open(save_fp) as f:
@@ -96,12 +95,14 @@ If load_file is False, do not look for save files.'''
             self._episode_summary.append(self._current_episode)
             self._current_episode = 0
             self._successes.fill(False)
-            if model_reset_callback is not None:
-                if (self._current_level < len(self._lessons) and
-                    self._lessons[self._current_level].set_learning_schedule):
-                    model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
-                else:
-                    model_reset_callback()
+
+        # call the reset on start of any lesson, including the first
+        if self._current_episode == 0 and model_reset_callback is not None:
+            if (self._current_level < len(self._lessons) and
+                self._lessons[self._current_level].set_learning_schedule):
+                model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
+            else:
+                model_reset_callback()
 
         if ((max_lesson is not None and self._current_level > max_lesson) or
             (self._current_level >= len(self._lessons)) or

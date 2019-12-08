@@ -86,7 +86,7 @@ class ModelTester:
                 self.current_lesson = saved_data['current_lesson']
                 self.current_model = saved_data['current_model']
 
-    def train(self):
+    def train(self, plot_stats=False, show_qsummary=False):
         
 
         while any(m.activated for m in self.modelList):
@@ -96,7 +96,12 @@ class ModelTester:
                 if m.activated:
                     #train for one lesson and output somewhere
                     m.build_model()
-                    m.total_episodes += train_model(m.model, m.curriculum, m.cfg, stats_filename=m.stats_filename, max_lesson=self.current_lesson)
+                    m.total_episodes += train_model(m.model, m.curriculum, m.cfg,
+                        stats_filename  = m.stats_filename,
+                        max_lesson      = self.current_lesson,
+                        initial_episode = m.total_episodes,
+                        plot_stats      = plot_stats,
+                        show_qsummary   = show_qsummary)
                     K.clear_session()
                     m.destroy_model()
                     gc.collect()
@@ -142,3 +147,14 @@ class ModelTester:
             json.dump(json_obj, f)
         print(f'Finished saving model tester {self.name}.')
         return filepath
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Execute the Collabuilder ModelTester framework.')
+    parser.add_argument('input', help='Directory containing input configs.')
+    parser.add_argument('output', help='Directory to write output stats to.')
+    parser.add_argument('-p', '--plot', help='Plot reward & length while training.', action='store_true')
+    parser.add_argument('-q', '--qsummary', help='Show QSummary while training.', action='store_true')
+    options = parser.parse_args()
+    mt = ModelTester(options.input, options.output)
+    mt.train(plot_stats=options.plot, show_qsummary=options.qsummary)

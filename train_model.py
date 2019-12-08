@@ -7,6 +7,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     if not stats_filename:
         stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
+    show_text_display = plot_stats or show_qsummary
 
     try:
         stats_data = np.genfromtxt(stats_filename,
@@ -53,7 +54,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 for arch in archs]
         qsummary = QSummary(archs, model)
 
-    if plot_stats or show_qsummary:
+    if show_text_display:
         from display import TextDisplay
         text_display = TextDisplay({
                 "Lesson #" : (lambda: '{}'.format(curriculum.lesson_num())),
@@ -73,7 +74,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     episode_num = initial_episode
     action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
     save_frequency   = cfg('training', 'save_frequency')
-    if plot_stats or show_qsummary:
+    if show_text_display:
         text_display.update()
 
     with open(stats_filename, 'a') as stats_file:
@@ -101,7 +102,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 lp.add(mission_stats.length)
             if show_qsummary:
                 qsummary.update()
-            if plot_stats or show_qsummary:
+            if show_text_display:
                 text_display.update()
 
             print('{},{},{},{}'.format(
@@ -119,9 +120,19 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
         model.save(save_id)
         curriculum.save(save_id)
 
-    if curriculum.is_completed():
+    if curriculum.is_completed() or (max_lesson is not None and curriculum.lesson_num() > max_lesson):
         print("Agent completed curriculum.")
     else:
         print('Agent was unable to complete curriculum lesson {}.'.format(curriculum.lesson_num()))
+
+    if plot_stats:
+        rp.close()
+        lp.close()
+
+    if show_qsummary:
+        qsummary.close()
+
+    if show_text_display:
+        text_display.close()
 
     return episode_num
