@@ -15,6 +15,7 @@ class WorldModel:
         self._arena_length  = self._cfg('arena', 'length')
         self._reward_weight = self._cfg('training', 'reward_weight')
         self._use_full_observation = self._cfg('agent', 'use_full_observation', default=True)
+        self._obs_edge_type = self._cfg('agent', 'obs_edge_type', default='air')
         if not self._use_full_observation:
             self._obs_lateral  = (self._cfg('agent', 'observation_width') - 1) // 2
             self._obs_vertical = (self._cfg('agent', 'observation_height') - 1) // 2
@@ -174,19 +175,19 @@ class WorldModel:
 
     def get_ac_observation(self, lateral, vertical):
         '''Returns a world + bp observation, centered on the agent, 2*lateral + 1 units in x and z directions, and 2*vertical + 1 units in the y direction.'''
-        return WorldModel.full_to_ac(self.get_full_observation(), lateral, vertical)
+        return WorldModel.full_to_ac(self.get_full_observation(), lateral, vertical, self._obs_edge_type)
 
     @staticmethod
-    def full_to_ac(full_obs, lateral, vertical):
+    def full_to_ac(full_obs, lateral, vertical, obs_edge_type='air'):
         agent_pos = np.ravel(np.where(full_obs[1] == 'agent'))
         if agent_pos.size == 0:
-            return np.full((2, 2*lateral+1, 2*vertical+1, 2*lateral+1), fill_value='air')
+            return np.full((2, 2*lateral+1, 2*vertical+1, 2*lateral+1), fill_value=obs_edge_type)
         output = np.pad(full_obs, (
                 (0,),
                 (lateral,),
                 (vertical,),
                 (lateral,)
-            ), constant_values=('air',))[
+            ), constant_values=(obs_edge_type,))[
             :,
             # Note: the padding cancels the offset for the observation:
             #   agent_pos[0] in padded array is agent_pos[0] - lateral in real, etc.

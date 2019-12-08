@@ -47,8 +47,9 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
             from world_model import WorldModel
             lateral  = (cfg('agent', 'observation_width') - 1) // 2
             vertical = (cfg('agent', 'observation_height') - 1) // 2
+            obs_edge_type = cfg('agent', 'obs_edge_type', default='air')
             archs = [Archetype(
-                    WorldModel.full_to_ac(arch.world, lateral, vertical),
+                    WorldModel.full_to_ac(arch.world, lateral, vertical, obs_edge_type),
                     arch.name,
                     arch.optimal_action)
                 for arch in archs]
