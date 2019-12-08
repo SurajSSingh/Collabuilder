@@ -4,6 +4,7 @@ import json
 from collections import namedtuple
 from run_mission import Mission
 from utils import CHECKPOINT_DIR, pick_file
+import blueprint_generator
 
 Lesson = namedtuple('Lesson', [
         'name',
@@ -167,6 +168,8 @@ def _get_lesson_function(name):
         return turn_lesson
     elif name == 'approach':
         return approach_lesson
+    elif name == 'foundation':
+        return foundation_lesson
     # Final case, if nothing matches
     raise ValueError("'{}' is not a recognized function.".format(name))
 
@@ -414,3 +417,26 @@ def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, tar
     distance = np.random.randint(1, max_distance+1)
 
     return (bp, (block_x, block_y, block_z - distance), target_reward)
+
+def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
+    bp = blueprint_generator.generate_1d_blueprint(arena_length,arena_width,arena_height)
+    block_count = 0
+    for layer in bp:
+        for row in layer:
+            for v,val in enumerate(row):
+                if val == 0:
+                    row[v] = 'air'
+                else:
+                    row[v] = 'stone'
+                    block_count += 1
+    bp = np.array(bp)
+    start_x = np.random.randint(arena_width)
+    start_y = np.random.randint(arena_length)
+    if 'block_weight' in kwargs:
+        target_reward = block_count*kwargs[block_weight]
+    else:
+        target_reward = block_count
+    buffer_factor = 0.8
+    print(target_reward)
+    return (bp, (start_x,0,start_y), target_reward*buffer_factor)
+
