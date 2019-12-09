@@ -1,7 +1,9 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-import multiprocessing
+import tensorflow.keras.backend as K
+import gc
+import os
 
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential, clone_model, Model
@@ -10,12 +12,7 @@ from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
 # from tensorflow.keras.utils import plot_model
 
-from utils import std_load, chance, ask_int, CHECKPOINT_DIR
-
-tf.config.threading.set_intra_op_parallelism_threads(
-    ask_int('Number of intra-op threads: ', min_val=1, default=multiprocessing.cpu_count()))
-tf.config.threading.set_inter_op_parallelism_threads(
-    ask_int('Number of inter-op threads: ', min_val=1, default=2))
+from utils import std_load, chance, CHECKPOINT_DIR
 
 class RLearner:
     '''Implements a target-network Deep Q-Learning architecture.'''
@@ -69,81 +66,23 @@ class RLearner:
             end   = start + self._batch_size
             return (self._X[start:end], self._Y[start:end])
 
-    def __init__(self, name, cfg, load_file=None):
+    def __init__(self, name, cfg, load_file=None, auto_latest=False):
         '''Creates an RLearner.
 If load_file is a valid file path, reads from that saved checkpoint.
 If load_file is None, searches for checkpoints using this name.
 If load_file is False, doesn't search for checkpoints.'''
         self._name = name
+        self._cfg = cfg
         self._save_history = cfg('training', 'save_history')
         self._inputs = cfg('inputs')
         self._input_coding = {b:i for i,b in enumerate(self._inputs)}
         self._actions = cfg('actions')
         self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
-        if cfg('agent', 'non_sequnetial', default=False):
-            self._prediction_network = self._build_NS_Model(input=Input(shape=(
-                                                            (2,
-                                                                cfg('arena', 'width'),
-                                                                cfg('arena', 'height'),
-                                                                cfg('arena', 'length'),
-                                                                len(self._inputs))
-                                                            if cfg('agent', 'use_full_observation', default=True) else
-                                                            (2,
-                                                                cfg('agent', 'observation_width'),
-                                                                cfg('agent', 'observation_height'),
-                                                                cfg('agent', 'observation_width'),
-                                                                len(self._inputs))
-                                                            )),
-                                                        layers_list=cfg('agent', 'layers'),
-                                                        cfg=cfg)
-        else:
-            self._prediction_network = Sequential()
-            # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-            self._prediction_network.add(InputLayer(input_shape=(
-                (2,
-                    cfg('arena', 'width'),
-                    cfg('arena', 'height'),
-                    cfg('arena', 'length'),
-                    len(self._inputs))
-                if cfg('agent', 'use_full_observation', default=True) else
-                (2,
-                    cfg('agent', 'observation_width'),
-                    cfg('agent', 'observation_height'),
-                    cfg('agent', 'observation_width'),
-                    len(self._inputs))
-                )))
-
-            # Now, load layers from config file and build them out:
-            for layer_str in cfg('agent', 'layers'):
-                # Don't try to process comments
-                if layer_str.lstrip()[0] != '#':
-                    # Dangerous to use eval, but convenient for our purposes.
-                    new_layer = eval(layer_str.format(
-                            arena_width  = cfg('arena', 'width'),
-                            arena_height = cfg('arena', 'height'),
-                            arena_length = cfg('arena', 'length'),
-                            observation_width  = cfg('agent', 'observation_width', default=0),
-                            observation_height = cfg('agent', 'observation_height', default=0),
-                            num_inputs   = len(cfg('inputs')),
-                            num_actions  = len(cfg('actions'))
-                        ))
-                    self._prediction_network.add(new_layer)
-                # If it is a list, branch off
-                elif type(layer_str) == list:
-                    print()
-            if cfg('agent', 'auto_final_layer', default=True):
-                # Output one-hot encoded action
-                self._prediction_network.add(Dense(len(cfg('actions')), activation='softmax'))
-            # Otherwise, user should provide such a layer. Model will fail later if they didn't.
-        self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
-        # plot_model(self._prediction_network, to_file='prediction_model.png')
         self.start_episode = 0
-        if load_file is not False:
-            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file)
-        self._target_network = clone_model(self._prediction_network)
-        self._target_network.build(self._prediction_network.input_shape)
-
+        self._prediction_network = None
+        self._target_network = None
+        self._build_model(load_file, auto_latest=auto_latest)
         self._target_update_frequency = 20
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
@@ -154,6 +93,69 @@ If load_file is False, doesn't search for checkpoints.'''
         self._discount = 0.95
         self._last_obs = None
         self._last_action = None
+
+    def _build_model(self, load_file, auto_latest=False):
+        if load_file:
+            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file, auto_latest=auto_latest)
+            self._target_network = clone_model(self._prediction_network)
+            self._target_network.build(self._prediction_network.input_shape)
+        else:
+            if self._cfg('agent', 'non_sequnetial', default=False):
+                self._prediction_network = self._build_NS_Model(input=Input(shape=(
+                                                                (2,
+                                                                    self._cfg('arena', 'width'),
+                                                                    self._cfg('arena', 'height'),
+                                                                    self._cfg('arena', 'length'),
+                                                                    len(self._inputs))
+                                                                if self._cfg('agent', 'use_full_observation', default=True) else
+                                                                (2,
+                                                                    self._cfg('agent', 'observation_width'),
+                                                                    self._cfg('agent', 'observation_height'),
+                                                                    self._cfg('agent', 'observation_width'),
+                                                                    len(self._inputs))
+                                                                )),
+                                                            layers_list=self._cfg('agent', 'layers'))
+            else:
+                self._prediction_network = Sequential()
+                # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
+                self._prediction_network.add(InputLayer(input_shape=(
+                    (2,
+                        self._cfg('arena', 'width'),
+                        self._cfg('arena', 'height'),
+                        self._cfg('arena', 'length'),
+                        len(self._inputs))
+                    if self._cfg('agent', 'use_full_observation', default=True) else
+                    (2,
+                        self._cfg('agent', 'observation_width'),
+                        self._cfg('agent', 'observation_height'),
+                        self._cfg('agent', 'observation_width'),
+                        len(self._inputs))
+                    )))
+
+                # Now, load layers from config file and build them out:
+                for layer_str in self._cfg('agent', 'layers'):
+                    # Don't try to process comments
+                    if type(layer_str) == str and layer_str.lstrip()[0] != '#':
+                        # Dangerous to use eval, but convenient for our purposes.
+                        new_layer = eval(layer_str.format(
+                                arena_width  = self._cfg('arena', 'width'),
+                                arena_height = self._cfg('arena', 'height'),
+                                arena_length = self._cfg('arena', 'length'),
+                                observation_width  = self._cfg('agent', 'observation_width', default=0),
+                                observation_height = self._cfg('agent', 'observation_height', default=0),
+                                num_inputs   = len(self._cfg('inputs')),
+                                num_actions  = len(self._cfg('actions'))
+                            ))
+                        self._prediction_network.add(new_layer)
+        if self._cfg('agent', 'auto_final_layer', default=True):
+            # Output one-hot encoded action
+            self._prediction_network.add(Dense(len(self._cfg('actions')), activation='softmax'))
+        # Otherwise, user should provide such a layer. Model will fail later if they didn't.
+        self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
+        # plot_model(self._prediction_network, to_file='prediction_model.png')
+        self._target_network = clone_model(self._prediction_network)
+        self._target_network.build(self._prediction_network.input_shape)
+
 
     def _preprocess(self, observation):
         return np.array([
@@ -168,28 +170,28 @@ If load_file is False, doesn't search for checkpoints.'''
             self._target_network.set_weights(self._prediction_network.get_weights())
             self._iters_since_target_update = 0
 
-    def _build_NS_Model(self,input,layers_list,cfg,main_branch=True):
+    def _build_NS_Model(self,input,layers_list,main_branch=True):
         interm_layer = list()
         interm_layer.append(input)
         for layer in layers_list:
             if type(layer) == str and layer.lstrip()[0:1] != '#':
                 if layer.lstrip()[0:2] == 'M:':
                     # Merge Interm layers (except input since that is only used in the branched layers)
-                    interm_layer = [eval(layer[2:].format(num_actions  = len(cfg('actions'))))(interm_layer[1:])]
+                    interm_layer = [eval(layer[2:].format(num_actions  = len(self._cfg('actions'))))(interm_layer[1:])]
                 else:
                     interm_layer.append(eval(layer.format(
-                                    arena_width  = cfg('arena', 'width'),
-                                    arena_height = cfg('arena', 'height'),
-                                    arena_length = cfg('arena', 'length'),
-                                    observation_width  = cfg('agent', 'observation_width', default=0),
-                                    observation_height = cfg('agent', 'observation_height', default=0),
-                                    num_inputs   = len(cfg('inputs')),
-                                    num_actions  = len(cfg('actions')))
+                                    arena_width  = self._cfg('arena', 'width'),
+                                    arena_height = self._cfg('arena', 'height'),
+                                    arena_length = self._cfg('arena', 'length'),
+                                    observation_width  = self._cfg('agent', 'observation_width', default=0),
+                                    observation_height = self._cfg('agent', 'observation_height', default=0),
+                                    num_inputs   = len(self._cfg('inputs')),
+                                    num_actions  = len(self._cfg('actions')))
                                 )(interm_layer[-1]))
             elif type(layer) == list:
                 layer_num = -1 if main_branch else 0
                 mb = True if type(layer[0]) == str and layer[0].lstrip()[0:1] == 'B' else False
-                interm_layer.append(self._build_NS_Model(interm_layer[layer_num],layer,cfg,main_branch=mb))
+                interm_layer.append(self._build_NS_Model(interm_layer[layer_num],layer,main_branch=mb))
         if main_branch:
             # return the built model
             return Model(inputs=interm_layer[0],outputs=interm_layer[-1])
@@ -245,11 +247,11 @@ If load_file is False, doesn't search for checkpoints.'''
         self._last_action = None
         self._epsilon *= self._epsilon_decay
 
-    def reset_learning_params(self, num_episodes=None):
+    def reset_learning_params(self, num_episodes=None, initial_episode=None):
         if num_episodes is not None:
             self._num_episodes = num_episodes
-        self._epsilon = self._initial_epsilon
         self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
+        self._epsilon = self._initial_epsilon * (self._epsilon_decay**((0 if initial_episode is None else initial_episode) + 1))
 
     def save(self, id=None):
         filepath = CHECKPOINT_DIR + self._name + ('' if id is None else '.' + id) + '.hdf5'
@@ -257,10 +259,17 @@ If load_file is False, doesn't search for checkpoints.'''
         self.save_history()
         return filepath
 
-    def reload(self,save_id):
-        filename = self.save(id=save_id)
+    def reload(self):
+        temp_file = CHECKPOINT_DIR + self._name + '.temp_save.hdf5'
+        self.save(temp_file)
         K.clear_session()
-        self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=filename)
+        del self._prediction_network
+        del self._target_network
+        self._prediction_network = None
+        self._target_network = None
+        gc.collect()
+        self._build_model(temp_file)
+        os.remove(temp_file)
 
     def save_history(self):
         # TODO: consider mem-mapping to deal with large history files
