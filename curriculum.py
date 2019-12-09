@@ -135,7 +135,7 @@ If load_file is False, do not look for save files.'''
 
     def get_demo_mission(self):
         # Return a mission without treating this as training, don't ask for or record rewards
-        level = max(self._current_level, len(self._lessons) - 1)
+        level = min(self._current_level, len(self._lessons) - 1)
         bp, start_pos, _ = self._lessons[level].function(
                 arena_width  = self._arena_width,
                 arena_height = self._arena_height,
@@ -143,7 +143,7 @@ If load_file is False, do not look for save files.'''
                 **self._lessons[level].params
             )
 
-        max_episode_time = self._lessons[self._current_level].max_episode_time
+        max_episode_time = self._lessons[level].max_episode_time
         return (bp, start_pos, max_episode_time)
 
 def _get_lesson_function(name):
