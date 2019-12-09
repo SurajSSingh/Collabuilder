@@ -155,6 +155,14 @@ if __name__ == '__main__':
     parser.add_argument('output', help='Directory to write output stats to.')
     parser.add_argument('-p', '--plot', help='Plot reward & length while training.', action='store_true')
     parser.add_argument('-q', '--qsummary', help='Show QSummary while training.', action='store_true')
+    parser.add_argument('--intra-op-threads', type=int, dest='intra', default=multiprocessing.cpu_count())
+    parser.add_argument('--inter-op-threads', type=int, dest='inter', default=2)
     options = parser.parse_args()
+
+    import tensorflow as tf
+
+    tf.config.threading.set_intra_op_parallelism_threads(options.intra)
+    tf.config.threading.set_inter_op_parallelism_threads(options.inter)
+
     mt = ModelTester(options.input, options.output)
     mt.train(plot_stats=options.plot, show_qsummary=options.qsummary)

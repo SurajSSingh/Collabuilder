@@ -15,7 +15,7 @@ Lesson = namedtuple('Lesson', [
     ])
 
 class Curriculum:
-    def __init__(self, cfg, name, load_file=None):
+    def __init__(self, cfg, name, load_file=None, auto_latest=False):
         '''Create a Curriculum based on given config.
 If load_file is a valid file path, read from that save file instead.
 If load_file is None, look for save files with correct name, and ask user to load from those.
@@ -48,7 +48,8 @@ If load_file is False, do not look for save files.'''
             pick_file(CHECKPOINT_DIR + self._name + '*.json',
                 prompt=f'Choose curriculum checkpoint for {self._name}',
                 none_prompt=f'Do not load curriculum checkpoint for {self._name}.',
-                failure_prompt=f'No curriculum checkpoint for {self._name}.')
+                failure_prompt=f'No curriculum checkpoint for {self._name}.',
+                auto_latest=auto_latest)
             )
         if save_fp is None:
             self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=False)
@@ -81,6 +82,13 @@ If load_file is False, do not look for save files.'''
     def episode_num(self):
         '''Episode number for this lesson only.'''
         return self._current_episode
+
+    def max_episodes(self):
+        '''Max episodes for this lesson. 0 if curriculum is complete.'''
+        if self._current_level < len(self._lessons):
+            return self._lessons[self._current_level].max_episodes
+        else:
+            return 0
 
     def pass_rate(self):
         '''Returns the fraction of lessons passed in the most recent observation period.'''
@@ -160,7 +168,7 @@ def _get_lesson_function(name):
         return lessonA
     elif name == 'lessonB':
         return lessonB
-    elif name in ['lessonC','lessonD','lessonE','lessonF','lessonG']:
+    elif name in ['lessonC','lessonD','lessonE','lessonF','lessonG','lessonMB']:
         return lessonMB
     elif name == 'in_front':
         return just_in_front_lesson
@@ -352,15 +360,18 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
         for pos in tower_positions:
             bp[pos[0]][pos[1]][pos[2]] = 'stone'
 
-    # Find most optimal route
-    # Currently hardcoded cost
-    movement_cost = 0.01
-    placement_cost = 1
-    optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
+    if 'target_reward' in kwargs:
+        buff_opt = kwargs['target_reward']
+    else:
+        # Find most optimal route
+        # Currently hardcoded cost
+        movement_cost = 0.01
+        placement_cost = 1
+        optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
 
-    # Allow near optimal buffer
-    buff = 'buff' if 'buff' in kwargs else 0.5
-    buff_opt = optimum - buff
+        # Allow near optimal buffer
+        buff = 'buff' if 'buff' in kwargs else 0.5
+        buff_opt = optimum - buff
 
     # Debug Print Statements
     if 'debug' in kwargs:

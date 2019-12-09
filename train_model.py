@@ -1,9 +1,11 @@
 import numpy as np
 
+import tensorflow.keras.backend as K
+
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None):
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None, reload_model=False):
     if not stats_filename:
         stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
@@ -66,6 +68,8 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
             }, title=model.name())
 
     def reset_fn(*args, **kwargs):
+        if reload_model:
+            model.reload()
         model.reset_learning_params(*args, **kwargs)
         if plot_stats:
             rp.add_sep()
@@ -75,6 +79,9 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
     episode_num = initial_episode
     action_delay = (0 if simulated else 0.2 / cfg('training', 'overclock_factor'))
     save_frequency   = cfg('training', 'save_frequency')
+
+    model.reset_learning_params(num_episodes=curriculum.max_episodes(), initial_episode=curriculum.episode_num())
+
     if show_text_display:
         text_display.update()
 
