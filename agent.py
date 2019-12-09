@@ -197,7 +197,7 @@ If load_file is False, doesn't search for checkpoints.'''
     def reset_learning_params(self, num_episodes=None, initial_episode=None):
         if num_episodes is not None:
             self._num_episodes = num_episodes
-        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/(self._num_episodes + 1))
         self._epsilon = self._initial_epsilon * (self._epsilon_decay**((0 if initial_episode is None else initial_episode) + 1))
 
     def save(self, id=None):
