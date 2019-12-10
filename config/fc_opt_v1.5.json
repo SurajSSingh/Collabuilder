@@ -72,8 +72,7 @@
                     "n_blocks": 4,
                     "tower": true,
                     "max_height": 4,
-                    "min_height": 1,
-                    "random_height": true
+                    "random_height": false
                 },
                 "max_episodes": 1000,
                 "max_episode_time": 20,
