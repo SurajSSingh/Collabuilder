@@ -71,8 +71,7 @@
                     "floor_size_z": 3,
                     "n_blocks": 4,
                     "tower": true,
-                    "max_height": 4,
-                    "random_height": false
+                    "max_height": 4
                 },
                 "max_episodes": 1000,
                 "max_episode_time": 20,
