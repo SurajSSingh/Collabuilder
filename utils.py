@@ -14,20 +14,23 @@ def std_checkpoint(name):
         save_best_only=True
     )
 
-def pick_file(name_pattern, prompt='Choose file:', none_prompt=None, failure_prompt='No matching files.'):
+def pick_file(name_pattern, prompt='Choose file:', none_prompt=None, failure_prompt='No matching files.', auto_latest=False):
     filepaths = sorted(glob.glob(name_pattern))
     if len(filepaths) <= 0:
         print(failure_prompt)
         return None
+    elif auto_latest:
+        return filepaths[-1]
     return ask_options(prompt, filepaths, none_prompt=none_prompt)
 
-def std_load(name, model=None, load_file=None):
+def std_load(name, model=None, load_file=None, auto_latest=False):
     '''Returns the model and epoch number saved under given name, with user confirmation/disambiguation. Returns None,None if no model is loaded.'''
     fp = (
         load_file if load_file is not None else
         pick_file(CHECKPOINT_DIR + glob.escape(name) + '.epoch_*.hdf5',
             none_prompt='Do not load model',
-            failure_prompt='No models saved under name ' + name)
+            failure_prompt='No models saved under name ' + name,
+            auto_latest=auto_latest)
         )
     if fp is None:
         print('Not loading model')

@@ -2,7 +2,6 @@ import sys
 import os
 import numpy as np
 
-from utils import ask_options
 from display import LivePlot
 
 def plot_file(stats_filename):
@@ -14,7 +13,7 @@ def plot_file(stats_filename):
     lp_data = stats_data['Episode_Length']
     separators = np.where(np.diff(stats_data['Lesson_Number']))[0]
 
-    name = os.path.basename(stats_filename).split('.')[0]
+    name = os.path.basename(stats_filename).rsplit('.', 1)[0]
 
     rp = LivePlot(f'{name} Reward during Training', '# Episodes', 'Total Reward', start_data = rp_data, separators=separators)
     lp = LivePlot(f'{name} Length during Training', '# Episodes', 'Length (s)', start_data = lp_data, separators=separators)
