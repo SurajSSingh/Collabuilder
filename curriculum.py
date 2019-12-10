@@ -419,9 +419,9 @@ def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, tar
     return (bp, (block_x, block_y, block_z - distance), target_reward)
 
 def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
-    bp = blueprint_generator.generate_1d_blueprint(arena_length,arena_width,arena_height)
+    bp_arr = blueprint_generator.generate_1d_blueprint(arena_length, arena_width, arena_height)
     block_count = 0
-    for layer in bp:
+    for layer in bp_arr:
         for row in layer:
             for v,val in enumerate(row):
                 if val == 0:
@@ -429,14 +429,18 @@ def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
                 else:
                     row[v] = 'stone'
                     block_count += 1
-    bp = np.array(bp)
-    start_x = np.random.randint(arena_width)
-    start_y = np.random.randint(arena_length)
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    for w in range(arena_width):
+        for h in range(arena_height):
+            for l in range(arena_length):
+                bp[w,h,l] = bp_arr[h][l][w]
+    start_x = 0#np.random.randint(arena_width)
+    start_y = 0#np.random.randint(arena_length)
     if 'block_weight' in kwargs:
         target_reward = block_count*kwargs[block_weight]
     else:
         target_reward = block_count
     buffer_factor = 0.8
-    print(target_reward)
     return (bp, (start_x,0,start_y), target_reward*buffer_factor)
+
 
