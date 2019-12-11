@@ -354,6 +354,7 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
             x_sum += (abs(start_x - pos[0])-1)
             z_sum += (abs(start_z - pos[1])-1)
 
+    tower_positions = None
     # Add height to blueprint if required
     if positions != None and 'tower' in kwargs:
         mx_h = kwargs['max_height'] if 'max_height' in kwargs else arena_height
@@ -370,7 +371,10 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
         # Currently hardcoded cost
         movement_cost = 0.01
         placement_cost = 1
-        optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
+        optimum = (
+            kwargs['target_reward_per_block'] * len(positions if tower_positions is None else tower_positions)
+            if 'target_reward_per_block' in kwargs else
+            1) #((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
 
         # Allow near optimal buffer
         buff = 'buff' if 'buff' in kwargs else 0.5

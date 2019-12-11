@@ -145,6 +145,8 @@ If load_file is False, doesn't search for checkpoints.'''
         if self._iters_since_target_update >= self._target_update_frequency:
             self._target_network.set_weights(self._prediction_network.get_weights())
             self._iters_since_target_update = 0
+            K.clear_session()
+            gc.collect()
 
     def name(self):
         return self._name
