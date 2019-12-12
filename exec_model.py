@@ -73,7 +73,9 @@ if __name__ == '__main__':
             simulated        = options.simulated,
             display          = disp
         )
-    run_mission(model, mission, cfg, demo=True)
+    mission_stats = run_mission(model, mission, cfg, demo=True)
+    print('Mission length : {}'.format(mission_stats.length))
+    print('Total reward   : {}'.format(mission_stats.reward))
 
     input('Press ENTER to exit...')
 

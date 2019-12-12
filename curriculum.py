@@ -462,28 +462,14 @@ def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
     return (bp, (start_x,0,start_y), target_reward*buffer_factor)
 
 def full_lesson(arena_width, arena_height, arena_length, **kwargs):
-    bp_arr = blueprint_generator.generate_blueprint(arena_length, arena_width, arena_height)
-    block_count = 0
-    for layer in bp_arr:
-        for row in layer:
-            for v,val in enumerate(row):
-                if val == 0:
-                    row[v] = 'air'
-                else:
-                    row[v] = 'stone'
-                    block_count += 1
+    bp_arr = np.array(blueprint_generator.generate_blueprint(arena_length, arena_width, arena_height), dtype='bool')
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-    for w in range(arena_width):
-        for h in range(arena_height):
-            for l in range(arena_length):
-                bp[w,h,l] = bp_arr[h][l][w]
+    bp[bp_arr.transpose((2, 0, 1))] = 'stone'
+    block_count = bp_arr.sum()
     start_x = 0#np.random.randint(arena_width)
     start_y = 0#np.random.randint(arena_length)
-    if 'block_weight' in kwargs:
-        target_reward = block_count*kwargs[block_weight]
-    else:
-        target_reward = block_count
-    buffer_factor = 0.8
+    target_reward = block_count*kwargs.get('block_weight', 1)
+    buffer_factor = kwargs.get('buffer_factor', 0.8)
     return (bp, (start_x,0,start_y), target_reward*buffer_factor)
 
 
