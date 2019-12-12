@@ -52,24 +52,40 @@
         "max_lesson_length": 1200,
         "lessons": [
             {
-                "name": "full",
-                "params": {
-                    "block_weight": 0.5,
-                    "buffer_factor": 1.0
-                },
-                "max_episodes": 6000,
-                "max_episode_time": 1,
-                "set_learning_schedule": true
-            },
-            {
                 "name": "lessonMB",
                 "params": {
                     "n_blocks": 10,
                     "k": 1,
-                    "target_reward": 4.0
+                    "target_reward": 3.0
                 },
-                "max_episodes": 6000,
+                "max_episodes": 4000,
                 "max_episode_time": 20,
+                "set_learning_schedule": true
+            },
+            {
+                "name": "full",
+                "params": {
+                    "length_margin": 1,
+                    "width_margin": 1,
+                    "height_margin": 6,
+                    "block_weight": 0.5,
+                    "buffer_factor": 0.8
+                },
+                "max_episodes": 4000,
+                "max_episode_time": 30,
+                "set_learning_schedule": true
+            },
+            {
+                "name": "full",
+                "params": {
+                    "length_margin": 1,
+                    "width_margin": 1,
+                    "height_margin": 3,
+                    "block_weight": 0.5,
+                    "buffer_factor": 0.8
+                },
+                "max_episodes": 4000,
+                "max_episode_time": 60,
                 "set_learning_schedule": true
             }
         ]
