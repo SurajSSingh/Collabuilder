@@ -25,7 +25,7 @@
     "training": {
         "num_episodes": 1000,
         "save_frequency": 50,
-        "max_episode_time": 3,
+        "max_episode_time": 90,
         "initial_epsilon": 0.8,
         "final_epsilon": 0.005,
         "overclock_factor": 5,
@@ -55,7 +55,7 @@
                 "name": "foundation",
                 "params": {},
                 "max_episodes": 100000,
-                "max_episode_time": 30,
+                "max_episode_time": 90,
                 "set_learning_schedule": true
             }
         ]
