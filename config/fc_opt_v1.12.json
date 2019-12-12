@@ -106,5 +106,5 @@
         }
     },
     "inputs": ["air", "stone", "edge"],
-    "actions": ["jumpmove 1", "turn 1", "turn -1", "use", "attack"]
+    "actions": ["jumpmove 1", "turn 1", "turn -1", "use"]
 }
