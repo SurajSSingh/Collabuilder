@@ -41,13 +41,12 @@ def construct(layout, row_start, row_end, col_start, col_end):
 
 
 def expand_layout(layout, height):
-    if height<3:
-        return None     
+    if height<2:
+        return layout     
     blueprint = []
     for h in range(height):
         blueprint.append(layout)
     blueprint[0] = copy.deepcopy(blueprint[0])
-    blueprint[-1] = blueprint[0]
     fill(blueprint[0])
     return blueprint
 
