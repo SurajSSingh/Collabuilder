@@ -20,8 +20,8 @@ if sys.version_info[0] == 2:
 else:
     print = functools.partial(print, flush=True)
 
-MODEL_BASE_NAME = 'branch_test'
-VERSION_NUMBER  = '1.0'
+MODEL_BASE_NAME = 'branch_final'
+VERSION_NUMBER  = '1.1'
 MODEL_NAME      = MODEL_BASE_NAME + '_v' + VERSION_NUMBER
 CONFIG_FILE     = MODEL_NAME
 

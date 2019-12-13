@@ -38,10 +38,19 @@ def FacingRight(arena_width, arena_height, arena_length):
     observation[1, (arena_width//2) - 1, 0, arena_length//2] = 'agent'
     return Archetype(observation, 'Facing Right', 'turn -1')
 
+def AttackStrayBlock(arena_width, arena_height, arena_length):
+    observation = np.full((2, arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    # Add a world block in the middle
+    observation[1, arena_width//2, 0, arena_length//2] = 'stone'
+    # Add the agent just in front of that block
+    observation[1, arena_width//2, 0, (arena_length//2) - 1] = 'agent'
+    return Archetype(observation, 'Attack Stray Block', 'attack')
+
 def StandardArchetypes(arena_width, arena_height, arena_length):
     return [f(arena_width, arena_height, arena_length) for f in [
         JustInFront,
         OneStepAway,
         FacingLeft,
-        FacingRight
+        FacingRight,
+        AttackStrayBlock
     ]]

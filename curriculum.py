@@ -330,8 +330,9 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
 
     # Randomize start
-    start_x = np.random.randint(0,arena_width)
-    start_z = np.random.randint(0,arena_length)
+    centrize = kwargs['centerize'] if 'centerize' in kwargs else 0
+    start_x = np.random.randint(0+centrize,arena_width-centrize)
+    start_z = np.random.randint(0+centrize,arena_length-centrize)
 
     # Get number of blocks and initalize x and z sums
     number_of_block = kwargs['n_blocks'] if 'n_blocks' in kwargs else 5
@@ -482,5 +483,3 @@ def full_lesson(arena_width, arena_height, arena_length, **kwargs):
     target_reward = block_count*kwargs.get('block_weight', 1)
     buffer_factor = kwargs.get('buffer_factor', 0.8)
     return (bp, (start_x,0,start_y), target_reward*buffer_factor)
-
-

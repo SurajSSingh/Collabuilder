@@ -83,7 +83,7 @@ If load_file is False, doesn't search for checkpoints.'''
         self._prediction_network = None
         self._target_network = None
         self._build_model(load_file, auto_latest=auto_latest)
-        self._target_update_frequency = 10
+        self._target_update_frequency = cfg('agent', 'target_update', default=10)
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
         self._final_epsilon   = cfg('training', 'final_epsilon')
