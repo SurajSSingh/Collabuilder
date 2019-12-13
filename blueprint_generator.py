@@ -41,13 +41,12 @@ def construct(layout, row_start, row_end, col_start, col_end):
 
 
 def expand_layout(layout, height):
-    if height<3:
-        return None     
+    if height<2:
+        return layout     
     blueprint = []
     for h in range(height):
         blueprint.append(layout)
     blueprint[0] = copy.deepcopy(blueprint[0])
-    blueprint[-1] = blueprint[0]
     fill(blueprint[0])
     return blueprint
 
@@ -84,23 +83,7 @@ def fill_subgrid(layout,row,col):
             for c in range(0,col_sz):
                 layout[row+r][col+c] = 1
 
-'''
-def dfs_fill(layout,row,col):
-    if layout[row][col] == 0:
-        layout[row][col] = 1
-        adj = get_adjacent(layout,row,col)
-        for a in adj:
-            dfs_fill(layout,a[0],a[1])
 
-def get_adjacent(layout,row,col):
-    r_vals = [row,row,row+1,row-1]
-    c_vals = [col+1,col-1,col,col]
-    adj = []
-    for i in range(4):
-        if getTile(layout,r_vals[i],c_vals[i]):
-            adj.append((r_vals[i],c_vals[i]))
-    return adj
-'''
 def getTile(layout,row,col):
     if 0<=row<len(layout) and 0<=col<len(layout[0]):
         return layout[row][col]
@@ -111,12 +94,14 @@ def generate_blueprint(length,width,height):
     generate_layout(base, 0, length-1, 0, width-1, 0)
     return expand_layout(base,height)
 
+def generate_1d_blueprint(length,width,height):
+    base = [[0 for i in range(width)] for i in range(length)]
+    empty = [[0 for i in range(width)] for i in range(length)]
+    generate_layout(base, 0, length-1, 0, width-1, 0)
+    bp = [base]
+    for h in range(height-1):
+        bp.append(empty)
+    return bp
+#   blueprint = generate_1d_blueprint(10,16,4)
 
-blueprint = generate_blueprint(10,16,4)
-print('Base:')
-for i in blueprint[0]:
-    print(i)
-print('\n\nWalls:')
-for i in blueprint[1]:
-    print(i)
 

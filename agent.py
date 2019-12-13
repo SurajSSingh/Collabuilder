@@ -169,6 +169,8 @@ If load_file is False, doesn't search for checkpoints.'''
         if self._iters_since_target_update >= self._target_update_frequency:
             self._target_network.set_weights(self._prediction_network.get_weights())
             self._iters_since_target_update = 0
+            K.clear_session()
+            gc.collect()
 
     def _build_NS_Model(self,input,layers_list,main_branch=True):
         interm_layer = list()
@@ -250,7 +252,7 @@ If load_file is False, doesn't search for checkpoints.'''
     def reset_learning_params(self, num_episodes=None, initial_episode=None):
         if num_episodes is not None:
             self._num_episodes = num_episodes
-        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/self._num_episodes)
+        self._epsilon_decay = (self._final_epsilon / self._initial_epsilon)**(1.0/(self._num_episodes + 1))
         self._epsilon = self._initial_epsilon * (self._epsilon_decay**((0 if initial_episode is None else initial_episode) + 1))
 
     def save(self, id=None):

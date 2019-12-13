@@ -4,6 +4,8 @@ import json
 from collections import namedtuple
 from run_mission import Mission
 from utils import CHECKPOINT_DIR, pick_file
+import blueprint_generator
+import blueprint_generator_2
 
 Lesson = namedtuple('Lesson', [
         'name',
@@ -135,7 +137,7 @@ If load_file is False, do not look for save files.'''
 
     def get_demo_mission(self):
         # Return a mission without treating this as training, don't ask for or record rewards
-        level = max(self._current_level, len(self._lessons) - 1)
+        level = min(self._current_level, len(self._lessons) - 1)
         bp, start_pos, _ = self._lessons[level].function(
                 arena_width  = self._arena_width,
                 arena_height = self._arena_height,
@@ -143,7 +145,7 @@ If load_file is False, do not look for save files.'''
                 **self._lessons[level].params
             )
 
-        max_episode_time = self._lessons[self._current_level].max_episode_time
+        max_episode_time = self._lessons[level].max_episode_time
         return (bp, start_pos, max_episode_time)
 
 def _get_lesson_function(name):
@@ -176,6 +178,10 @@ def _get_lesson_function(name):
         return turn_lesson
     elif name == 'approach':
         return approach_lesson
+    elif name == 'foundation':
+        return foundation_lesson
+    elif name == 'full':
+        return full_lesson
     # Final case, if nothing matches
     raise ValueError("'{}' is not a recognized function.".format(name))
 
@@ -351,6 +357,7 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
             x_sum += (abs(start_x - pos[0])-1)
             z_sum += (abs(start_z - pos[1])-1)
 
+    tower_positions = None
     # Add height to blueprint if required
     if positions != None and 'tower' in kwargs:
         mx_h = kwargs['max_height'] if 'max_height' in kwargs else arena_height
@@ -367,7 +374,10 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
         # Currently hardcoded cost
         movement_cost = 0.01
         placement_cost = 1
-        optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
+        optimum = (
+            kwargs['target_reward_per_block'] * len(positions if tower_positions is None else tower_positions)
+            if 'target_reward_per_block' in kwargs else
+            1) #((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
 
         # Allow near optimal buffer
         buff = 'buff' if 'buff' in kwargs else 0.5
@@ -426,3 +436,51 @@ def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, tar
     distance = np.random.randint(1, max_distance+1)
 
     return (bp, (block_x, block_y, block_z - distance), target_reward)
+
+def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
+    bp_arr = blueprint_generator.generate_1d_blueprint(arena_length, arena_width, arena_height)
+    block_count = 0
+    for layer in bp_arr:
+        for row in layer:
+            for v,val in enumerate(row):
+                if val == 0:
+                    row[v] = 'air'
+                else:
+                    row[v] = 'stone'
+                    block_count += 1
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    for w in range(arena_width):
+        for h in range(arena_height):
+            for l in range(arena_length):
+                bp[w,h,l] = bp_arr[h][l][w]
+    start_x = 0#np.random.randint(arena_width)
+    start_y = 0#np.random.randint(arena_length)
+    if 'block_weight' in kwargs:
+        target_reward = block_count*kwargs[block_weight]
+    else:
+        target_reward = block_count
+    buffer_factor = 0.8
+    return (bp, (start_x,0,start_y), target_reward*buffer_factor)
+
+def full_lesson(arena_width, arena_height, arena_length, **kwargs):
+    length_margin = kwargs.get('length_margin', 0)
+    width_margin  = kwargs.get('width_margin',  0)
+    height_margin = kwargs.get('height_margin', 0)
+    bp_arr = blueprint_generator_2.generate_blueprint(
+            arena_length - 2*length_margin,
+            arena_width  - 2*width_margin,
+            arena_height - height_margin)
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    bp[np.pad(bp_arr.transpose((2, 0, 1)),
+        ((width_margin, width_margin),
+         (0, height_margin),
+         (length_margin, length_margin)),
+        constant_values=False)] = 'stone'
+    block_count = bp_arr.sum()
+    start_x = 0#np.random.randint(arena_width)
+    start_y = 0#np.random.randint(arena_length)
+    target_reward = block_count*kwargs.get('block_weight', 1)
+    buffer_factor = kwargs.get('buffer_factor', 0.8)
+    return (bp, (start_x,0,start_y), target_reward*buffer_factor)
+
+
