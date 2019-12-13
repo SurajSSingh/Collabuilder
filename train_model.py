@@ -122,7 +122,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 file=stats_file, flush=True)
             if episode_num % save_frequency == 0:
                 save_id = 'epoch_{:09d}'.format(episode_num)
-                if _reloadable:
+                if reload_model:
                     model.reload(save_id)
                 else:
                     model.save(save_id)

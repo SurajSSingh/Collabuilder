@@ -10,7 +10,7 @@ from tensorflow.keras.models import Sequential, clone_model, Model
 from tensorflow.keras.layers import Dense, InputLayer, Lambda, Input
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
-# from tensorflow.keras.utils import plot_model
+from tensorflow.keras.utils import plot_model
 
 from utils import std_load, chance, CHECKPOINT_DIR
 
@@ -83,7 +83,7 @@ If load_file is False, doesn't search for checkpoints.'''
         self._prediction_network = None
         self._target_network = None
         self._build_model(load_file, auto_latest=auto_latest)
-        self._target_update_frequency = 20
+        self._target_update_frequency = 10
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
         self._final_epsilon   = cfg('training', 'final_epsilon')
@@ -152,7 +152,7 @@ If load_file is False, doesn't search for checkpoints.'''
             self._prediction_network.add(Dense(len(self._cfg('actions')), activation='softmax'))
         # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
-        # plot_model(self._prediction_network, to_file='prediction_model.png')
+        plot_model(self._prediction_network, show_shapes=True, to_file='{}_model.png'.format(self._name))
         self._target_network = clone_model(self._prediction_network)
         self._target_network.build(self._prediction_network.input_shape)
 
