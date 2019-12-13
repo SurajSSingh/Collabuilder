@@ -5,6 +5,7 @@ from collections import namedtuple
 from run_mission import Mission
 from utils import CHECKPOINT_DIR, pick_file
 import blueprint_generator
+import blueprint_generator_2
 
 Lesson = namedtuple('Lesson', [
         'name',
@@ -465,11 +466,10 @@ def full_lesson(arena_width, arena_height, arena_length, **kwargs):
     length_margin = kwargs.get('length_margin', 0)
     width_margin  = kwargs.get('width_margin',  0)
     height_margin = kwargs.get('height_margin', 0)
-    bp_arr = np.array(blueprint_generator.generate_blueprint(
+    bp_arr = blueprint_generator_2.generate_blueprint(
             arena_length - 2*length_margin,
             arena_width  - 2*width_margin,
-            arena_height - height_margin),
-        dtype='bool')
+            arena_height - height_margin)
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
     bp[np.pad(bp_arr.transpose((2, 0, 1)),
         ((width_margin, width_margin),
