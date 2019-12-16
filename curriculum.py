@@ -212,7 +212,7 @@ def lessonA(arena_width, arena_height, arena_length, **kwargs):
     center_x = arena_width//2
     center_z = arena_length//2
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-    bp[np.random.randint(low=0+k,high=arena_width-k+1)][0][np.random.randint(low=0+k,high=arena_length-k+1)] = 'stone'
+    bp[center_x+np.random.randint(low=-k,high=k)][0][center_z+np.random.randint(low=-k,high=k)] = 'stone'
     return (bp, (center_x, 0, center_z), MAX_REWARD-BUFFER)
 
 def lessonB(arena_width, arena_height, arena_length, **kwargs):
@@ -330,8 +330,9 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
 
     # Randomize start
-    start_x = np.random.randint(0,arena_width)
-    start_z = np.random.randint(0,arena_length)
+    centrize = kwargs['centerize'] if 'centerize' in kwargs else 0
+    start_x = np.random.randint(0+centrize,arena_width-centrize)
+    start_z = np.random.randint(0+centrize,arena_length-centrize)
 
     # Get number of blocks and initalize x and z sums
     number_of_block = kwargs['n_blocks'] if 'n_blocks' in kwargs else 5
@@ -482,5 +483,3 @@ def full_lesson(arena_width, arena_height, arena_length, **kwargs):
     target_reward = block_count*kwargs.get('block_weight', 1)
     buffer_factor = kwargs.get('buffer_factor', 0.8)
     return (bp, (start_x,0,start_y), target_reward*buffer_factor)
-
-

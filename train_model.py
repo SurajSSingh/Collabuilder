@@ -5,7 +5,8 @@ import tensorflow.keras.backend as K
 from run_mission import Mission, run_mission
 from utils import get_config
 
-def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None, reload_model=False):
+def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulated=True, plot_stats=False, show_qsummary=False, stats_filename = None, max_lesson=None):
+    reload_model = cfg('agent', 'reload_at_checkpoint', default=False)
     if not stats_filename:
         stats_filename = 'stats/' + model.name() + '.csv'
     stats_header = 'Lesson Number,Episode Number,Episode Reward,Episode Length'
@@ -19,7 +20,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
         rp_data = stats_data['Episode_Reward']
         lp_data = stats_data['Episode_Length']
         separators = np.where(np.diff(stats_data['Lesson_Number']))[0]
-        np.savetxt(stats_filename, stats_data, 
+        np.savetxt(stats_filename, stats_data,
             fmt='%d,%d,%f,%f',
             header=stats_header,
             comments='')
@@ -30,7 +31,7 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
         lp_data = []
         separators = []
         new_file = True
-        
+
     if plot_stats:
         from display import LivePlot
         rp = LivePlot('Episode Reward during Training', '# Episodes', 'Total Reward', start_data = rp_data, separators=separators)
@@ -121,7 +122,10 @@ def train_model(model, curriculum, cfg, initial_episode=0, display=None, simulat
                 file=stats_file, flush=True)
             if episode_num % save_frequency == 0:
                 save_id = 'epoch_{:09d}'.format(episode_num)
-                model.save(save_id)
+                if reload_model:
+                    model.reload(save_id)
+                else:
+                    model.save(save_id)
                 curriculum.save(save_id)
             bp, start_pos, max_episode_time = curriculum.get_mission(last_reward, reset_fn, max_lesson=max_lesson)
         save_id = 'epoch_{:09d}'.format(episode_num)

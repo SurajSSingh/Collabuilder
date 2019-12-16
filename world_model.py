@@ -1,4 +1,5 @@
 import numpy as np
+from math import exp
 from utils import get_config
 
 class WorldModel:
@@ -81,8 +82,8 @@ class WorldModel:
         agent_x = int(raw_obs['XPos'] - self._offset_x - self._anchor_x)
         agent_y = int(raw_obs['YPos'] - self._offset_y - self._anchor_y)
         agent_z = int(raw_obs['ZPos'] - self._offset_z - self._anchor_z)
-        if (0 <= agent_x < world.shape[0] and 
-            0 <= agent_y < world.shape[1] and 
+        if (0 <= agent_x < world.shape[0] and
+            0 <= agent_y < world.shape[1] and
             0 <= agent_z < world.shape[2] ):
             world[agent_x, agent_y, agent_z] = 'agent'
         # Rotate world and blueprint to be agent-facing
@@ -95,7 +96,7 @@ class WorldModel:
         self._old_num_complete    = self.num_complete()
         self._old_num_incomplete  = self.num_incomplete()
         self._old_num_superfluous = self.num_superfluous()
-        
+
         if action == "jumpmove 1":
             # Find agent:
             agent_pos = tuple(self.agent_position())
@@ -150,7 +151,7 @@ class WorldModel:
             in_front = (self._world[agent_pos[0], max(0, agent_pos[1]-4):agent_pos[1]+1, agent_pos[2]+1] != 'air')
             if in_front.any():
                 # We're looking at a solid block, so we can attack it
-                attacked_block_y = agent_pos[1] - np.where(np.flip(in_front))[0][0] 
+                attacked_block_y = agent_pos[1] - np.where(np.flip(in_front))[0][0]
                 self._world[agent_pos[0], attacked_block_y, agent_pos[2]+1] = 'air'
             elif agent_pos[1] <= 4:
                 # There was no block to attack, but we were low enough to see the floor.
@@ -264,6 +265,6 @@ class WorldModel:
             #   This also penalizes removing necessary blocks, and rewards removing superfluous ones
             #   That second function avoids being able to place the same block over and over to rack up rewards
             (  self._reward_weight['place_necessary'] * (self.num_complete() - self._old_num_complete) ) +
-            (  self._reward_weight['place_superfluous'] * (self.num_superfluous() - self._old_num_superfluous) )
+            (  self._reward_weight['place_superfluous'] * (self.num_superfluous() - self._old_num_superfluous))
             )
         return reward

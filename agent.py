@@ -5,10 +5,12 @@ import tensorflow.keras.backend as K
 import gc
 import os
 
-from tensorflow.keras.models import Sequential, clone_model
-from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Sequential, clone_model, Model
+from tensorflow.keras.layers import Dense, InputLayer, Lambda, Input
 from tensorflow.keras.utils import to_categorical, Sequence
 from tensorflow.keras.callbacks import LambdaCallback
+from tensorflow.keras.utils import plot_model
 
 from utils import std_load, chance, CHECKPOINT_DIR
 
@@ -77,8 +79,11 @@ If load_file is False, doesn't search for checkpoints.'''
         self._actions = cfg('actions')
         self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
+        self.start_episode = cfg('training', 'start_episode', default=0)
+        self._prediction_network = None
+        self._target_network = None
         self._build_model(load_file, auto_latest=auto_latest)
-        self._target_update_frequency = 20
+        self._target_update_frequency = cfg('agent', 'target_update', default=10)
         self._iters_since_target_update = 0
         self._initial_epsilon = cfg('training', 'initial_epsilon')
         self._final_epsilon   = cfg('training', 'final_epsilon')
@@ -90,45 +95,64 @@ If load_file is False, doesn't search for checkpoints.'''
         self._last_action = None
 
     def _build_model(self, load_file, auto_latest=False):
-        self._prediction_network = Sequential()
-        # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
-        self._prediction_network.add(InputLayer(input_shape=(
-            (2,
-                self._cfg('arena', 'width'),
-                self._cfg('arena', 'height'),
-                self._cfg('arena', 'length'),
-                len(self._inputs))
-            if self._cfg('agent', 'use_full_observation', default=True) else
-            (2,
-                self._cfg('agent', 'observation_width'),
-                self._cfg('agent', 'observation_height'),
-                self._cfg('agent', 'observation_width'),
-                len(self._inputs))
-            )))
+        if load_file:
+            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file, auto_latest=auto_latest)
+            self._target_network = clone_model(self._prediction_network)
+            self._target_network.build(self._prediction_network.input_shape)
+        else:
+            if self._cfg('agent', 'non_sequnetial', default=False):
+                self._prediction_network = self._build_NS_Model(input=Input(shape=(
+                                                                (2,
+                                                                    self._cfg('arena', 'width'),
+                                                                    self._cfg('arena', 'height'),
+                                                                    self._cfg('arena', 'length'),
+                                                                    len(self._inputs))
+                                                                if self._cfg('agent', 'use_full_observation', default=True) else
+                                                                (2,
+                                                                    self._cfg('agent', 'observation_width'),
+                                                                    self._cfg('agent', 'observation_height'),
+                                                                    self._cfg('agent', 'observation_width'),
+                                                                    len(self._inputs))
+                                                                )),
+                                                            layers_list=self._cfg('agent', 'layers'))
+            else:
+                self._prediction_network = Sequential()
+                # Take in the blueprint as desired and the state of the world, in the same shape as the blueprint
+                self._prediction_network.add(InputLayer(input_shape=(
+                    (2,
+                        self._cfg('arena', 'width'),
+                        self._cfg('arena', 'height'),
+                        self._cfg('arena', 'length'),
+                        len(self._inputs))
+                    if self._cfg('agent', 'use_full_observation', default=True) else
+                    (2,
+                        self._cfg('agent', 'observation_width'),
+                        self._cfg('agent', 'observation_height'),
+                        self._cfg('agent', 'observation_width'),
+                        len(self._inputs))
+                    )))
 
-        # Now, load layers from config file and build them out:
-        for layer_str in self._cfg('agent', 'layers'):
-            # Don't try to process comments
-            if layer_str.lstrip()[0] != '#':
-                # Dangerous to use eval, but convenient for our purposes.
-                new_layer = eval(layer_str.format(
-                        arena_width  = self._cfg('arena', 'width'),
-                        arena_height = self._cfg('arena', 'height'),
-                        arena_length = self._cfg('arena', 'length'),
-                        observation_width  = self._cfg('agent', 'observation_width', default=0),
-                        observation_height = self._cfg('agent', 'observation_height', default=0),
-                        num_inputs   = len(self._cfg('inputs')),
-                        num_actions  = len(self._cfg('actions'))
-                    ))
-                self._prediction_network.add(new_layer)
+                # Now, load layers from config file and build them out:
+                for layer_str in self._cfg('agent', 'layers'):
+                    # Don't try to process comments
+                    if type(layer_str) == str and layer_str.lstrip()[0] != '#':
+                        # Dangerous to use eval, but convenient for our purposes.
+                        new_layer = eval(layer_str.format(
+                                arena_width  = self._cfg('arena', 'width'),
+                                arena_height = self._cfg('arena', 'height'),
+                                arena_length = self._cfg('arena', 'length'),
+                                observation_width  = self._cfg('agent', 'observation_width', default=0),
+                                observation_height = self._cfg('agent', 'observation_height', default=0),
+                                num_inputs   = len(self._cfg('inputs')),
+                                num_actions  = len(self._cfg('actions'))
+                            ))
+                        self._prediction_network.add(new_layer)
         if self._cfg('agent', 'auto_final_layer', default=True):
             # Output one-hot encoded action
             self._prediction_network.add(Dense(len(self._cfg('actions')), activation='softmax'))
         # Otherwise, user should provide such a layer. Model will fail later if they didn't.
         self._prediction_network.compile(loss='mse', optimizer='adam', metrics=[])
-        self.start_episode = 0
-        if load_file is not False:
-            self._prediction_network,self.start_episode = std_load(self._name, self._prediction_network, load_file=load_file, auto_latest=auto_latest)
+        plot_model(self._prediction_network, show_shapes=True, to_file='{}_model.png'.format(self._name))
         self._target_network = clone_model(self._prediction_network)
         self._target_network.build(self._prediction_network.input_shape)
 
@@ -147,6 +171,35 @@ If load_file is False, doesn't search for checkpoints.'''
             self._iters_since_target_update = 0
             K.clear_session()
             gc.collect()
+
+    def _build_NS_Model(self,input,layers_list,main_branch=True):
+        interm_layer = list()
+        interm_layer.append(input)
+        for layer in layers_list:
+            if type(layer) == str and layer.lstrip()[0:1] != '#':
+                if layer.lstrip()[0:2] == 'M:':
+                    # Merge Interm layers (except input since that is only used in the branched layers)
+                    interm_layer = [eval(layer[2:].format(num_actions  = len(self._cfg('actions'))))(interm_layer[1:])]
+                else:
+                    interm_layer.append(eval(layer.format(
+                                    arena_width  = self._cfg('arena', 'width'),
+                                    arena_height = self._cfg('arena', 'height'),
+                                    arena_length = self._cfg('arena', 'length'),
+                                    observation_width  = self._cfg('agent', 'observation_width', default=0),
+                                    observation_height = self._cfg('agent', 'observation_height', default=0),
+                                    num_inputs   = len(self._cfg('inputs')),
+                                    num_actions  = len(self._cfg('actions')))
+                                )(interm_layer[-1]))
+            elif type(layer) == list:
+                layer_num = -1 if main_branch else 0
+                mb = True if type(layer[0]) == str and layer[0].lstrip()[0:1] == 'B' else False
+                interm_layer.append(self._build_NS_Model(interm_layer[layer_num],layer,main_branch=mb))
+        if main_branch:
+            # return the built model
+            return Model(inputs=interm_layer[0],outputs=interm_layer[-1])
+        else:
+            # return the built branch (should be last layer)
+            return interm_layer[-1]
 
     def name(self):
         return self._name
@@ -210,10 +263,12 @@ If load_file is False, doesn't search for checkpoints.'''
 
     def reload(self):
         temp_file = CHECKPOINT_DIR + self._name + '.temp_save.hdf5'
-        K.clear_session()
         self.save(temp_file)
+        K.clear_session()
         del self._prediction_network
         del self._target_network
+        self._prediction_network = None
+        self._target_network = None
         gc.collect()
         self._build_model(temp_file)
         os.remove(temp_file)
