@@ -76,10 +76,11 @@ Since our agent wasn’t able to completely build the full blueprint, the most i
 Closely related to this metric is the reward the agent earns per episode. This was captured during training, and is displayed below, along with the length of each episode. The dashed vertical lines denote where the agent moved from one lesson to the next. Also note that these graphs are smoothed to avoid clutter and more clearly show trends in the data.
 
 <p align="center">
-    <img src="TODO" width="600" height="372" title="Reward Plot">
+    <img src="https://drive.google.com/uc?id=1hPHvgheYBfPTkmNWleribakshjy6cvMn" width="600" height="510" title="Reward Plot">
 </p>
+
 <p align="center">
-    <img src="TODO" width="600" height="372" title="Length Plot">
+    <img src="https://drive.google.com/uc?id=1Zx554Vx3tvxqeeixTAyqS-DfrNHUOOo4" width="600" height="510" title="Length Plot">
 </p>
 
 Observe how the agent initially receives mostly negative rewards, as it is continually punished for leaving the arena and placing superfluous blocks. Over the course of the first lesson, it slowly learns how to navigate and place blocks effectively, eventually reaching near-optimal rewards for the first lesson. The rewards drop at the start of the next lesson, primarily because the epsilon value used for epsilon-greedy action selection is reset to $$\varepsilon_0 = 0.8$$. We see a corresponding drop in the episode length at this time, as the agent randomly chooses actions that often lead to ending the mission prematurely. At around 4500 episodes, we see a sharp increase in the rewards received for the second lesson, as well as a levelling off of episode length near the 30 second maximum length. This is when the agent first becomes effective at placing blocks in a multi-level blueprint, and the steady increase in reward thereafter is attributed to increasingly effective strategies for building, and decreasing epsilon values. At around 5500 episodes, we noticed the time limit of 30 seconds was insufficient to complete the episode, even with optimal behavior, and that the agent nearly always times out, showing that it is exploiting the available time to its fullest capacity. To remedy this, and because we didn’t have time to retrain an agent from scratch, we built a new lesson using the same two-level blueprints, but with a much higher (5 minute) time limit, and manually moved the agent on to this new lesson. Once again, the reset in epsilon caused a sharp decrease in reward and episode length. However, the agent soon exploits the longer episode time, as we see the episode length sharply exceed the previous maximum, and use the behaviors it learned in previous lessons to place large amounts of the blueprint. We expect that further training would continue the upward trend in the reward graph, and would reduce the variance seen in this later stage. Based on prior testing, we also expect that sufficient training would eventually decrease the episode lengths slightly, as the agent optimizes its behavior for speed.
@@ -91,13 +92,13 @@ Another important metric is the accuracy with which the agent is able to constru
 In our status report, we mentioned that the complexity of blueprints was a key qualitative metric of our agent’s ability. Since our agent is able to construct 2-layer blueprints with moderate competency, as explained above, we have a distinct improvement from the status report, in which the agent placed only a single block, and are close to meeting the goal of a fully-sized blueprint without a roof. We expect that the current agent could meet this goal without modification, given sufficient training time. An example of the kind of blueprint our agent attempted is given below, displayed using our simulation. Notice that there is a solid foundation layer, and walls both around the exterior and throughout the interior separating various rooms in the structure. The agent is the red block, with a few dark blue blocks it has already placed nearby.
 
 <p align="center">
-    <img src="TODO" width="345" height="350" title="2-Level Blueprint">
+    <img src="https://drive.google.com/uc?id=19ZZOVqf_75WYjj7PZt6CZaUALnJ0nPxA" width="600" height="510" title="2-Level Blueprint">
 </p>
 
 This blueprint is close to the full goal of a “tall” (4-layer) blueprint, in which all the walls have been extended vertically, like below:
 
 <p align="center">
-    <img src="TODO" width="345" height="350" title="4-Level Blueprint">
+    <img src="https://drive.google.com/uc?id=1CrQ6ele3FRX3bp80vaEz-9eAM-eNxiRq" width="600" height="510" title="4-Level Blueprint">
 </p>
 
 Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores very highly on the first lesson, and moderately on the second. When given randomly scattered blocks on the ground to place, the agent effectively navigates to positions where blocks are needed and places them, and even explores the world effectively when there are no incomplete blocks in its field of view. On the two-layer blueprints, the agent tends to build walls by constructing stairs to begin the wall, then walking along the top of the wall and constructing the next step as it goes. In this respect, the agent behaves highly reasonably. However, the agent tends to get “confused” by the interior walls, eventually attempting to place a block that has already been placed, or turning around indefinitely. In this respect, the agent fails to behave reasonably. However, given the current level of training, we consider this behavior to be acceptable.
