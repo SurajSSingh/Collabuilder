@@ -27,16 +27,20 @@ In order to efficiently research architectures and hyper-parameters for our agen
     <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
 </p>
 
-All successful versions of our agent first applied one or more layers of convolutions, followed by fully connected layers. Using the model-testing framework we developed, we made the following comparisons:
-Convolutional layer arrangements: We tried 1-3 layers of convolution, with varying numbers of filters, with and without padding. We found that 2 layers, with 16 and 8 filters respectively, and without padding, was optimal.
-Post-convolution layer: We tried max-pooling with various stride lengths, batch-normalization, and nothing between the convolutions and fully-connected layers. We found that directly connecting the last convolution to the fully-connected layers was most effective.
+All successful versions of our agent first applied one or more convolutional layers, followed by fully connected layers. Using the model-testing framework we developed, we made the following comparisons:
 
-Fully-connected layers: We tried 1 to 4 fully-connected layers, with 4 to 64 neurons in varying arrangements. We found that 3 layers, with 32, then 16, then 4 neurons, was optimal.
+* Full-world vs. agent-centric observations: We tried giving the agent the entire world as an observation, with a special "block" type for the agent's location, versus giving the agent a fixed-size observation centered on the agent's location, without explicitly marking the agent's location. The latter trained more reliably and robustly.
+
+* Convolutional layer arrangements: We tried 1-3 layers of convolution, with varying numbers of filters, with and without padding. We found that 2 layers, with 16 and 8 filters respectively, and without padding, was optimal.
+
+* Post-convolution layer: We tried max-pooling with various stride lengths, batch-normalization, and nothing between the convolutions and fully-connected layers. We found that directly connecting the last convolution to the fully-connected layers was most effective.
+
+* Fully-connected layers: We tried 1 to 4 fully-connected layers, with 4 to 64 neurons in varying arrangements. We found that 3 layers, with 32, then 16, then 4 neurons, was optimal.
 Activation function: We tried using ReLU, Tanh, and ELU (Exponential Linear Unit) activation functions on hidden layers. Of these, ELU performed best.
 
-Curriculums: We tried varying the number and kinds of lessons in the curriculum, with more lessons and smaller incremental goals, versus fewer lessons with larger goals. We found that having just a few lessons, with large goals and long training times, was most effective. Having many small, incremental goals led to less effective transfer of the training between lessons. We suspect the agent overfit to the narrowly tailored lessons.
+* Curriculums: We tried varying the number and kinds of lessons in the curriculum, with more lessons and smaller incremental goals, versus fewer lessons with larger goals. We found that having just a few lessons, with large goals and long training times, was most effective. Having many small, incremental goals led to less effective transfer of the training between lessons. We suspect the agent overfit to the narrowly tailored lessons.
 
-Using the results described above, our best network first applies two levels of 3-D convolutions, first using 16 filters, then using 8 filters. Then, we apply three fully-connected layers, numbering 32, 16, and 4 neurons, with all hidden layers using ELU activations. The output is a Q-value estimate for each of four available actions: Turn left, Turn right, Jump/Move forward, and Place block. Of particular importance is that all layers use Exponential Linear Unit (ELU) activation functions, except the output layer, which uses a linear activation. The parameters described here were chosen experimentally, using the model tester.
+Using the results described above, our best network first applies two levels of 3-D convolutions, first using 16 filters, then using 8 filters. Then, we apply three fully-connected layers, numbering 32, 16, and 4 neurons, with all hidden layers using ELU activations. The output is a Q-value estimate for each of four available actions: Turn left, Turn right, Jump/Move forward, and Place block.
 
 For training, a double-Q-learning update policy is implemented, whereby a copy of the network with frozen weights $$ \Theta_0 $$ is used to estimate the target Q-values $$ \hat{Q} $$ as follows:
 
@@ -50,6 +54,7 @@ Since the task of building structures requires a complex sequence of actions to 
 1. 10 blocks scattered randomly throughout the arena, with a randomly placed agent
 2. Full blueprint, 2 levels deep
 3. Full blueprint, 4 levels deep
+
 It should be noted that the full blueprints are generated randomly, so the agent is not being trained on a single, fixed blueprint, but rather is expected to construct any blueprint given to it. Due to time constraints, however, we were unable to fully train a model on the full arena size using this curriculum. The resutls of our partially trained model are summarized below.
 
 <p align="center">
@@ -108,13 +113,6 @@ This blueprint is close to the full goal of a “tall” (4-layer) blueprint, in
 </p>
 
 Another key qualitative metric is to evaluate whether the agent behaves "reasonably" to a human observer. On this metric, the agent scores very highly on the first lesson, and moderately on the second. When given randomly scattered blocks on the ground to place, the agent effectively navigates to positions where blocks are needed and places them, and even explores the world effectively when there are no incomplete blocks in its field of view. On the two-layer blueprints, the agent tends to build walls by constructing stairs to begin the wall, then walking along the top of the wall and constructing the next step as it goes. In this respect, the agent behaves highly reasonably. However, the agent tends to get “confused” by the interior walls, eventually attempting to place a block that has already been placed, or turning around indefinitely. In this respect, the agent fails to behave reasonably. However, given the current level of training, we consider this behavior to be acceptable.
-
-
-
-## Remove this section but make sure nothing important isnt moved to another section
-
-
-As made evident by our team name “Collabuilder”, we would love to be able to introduce multiple agents into the environment and have them work together in order to build the structures. Our simulator would be all the more crucial in this setup, and it would be difficult to find the correct way to train agents simultaneously. Given time, this would be our final addition to the project.
 
 
 ## Resources Used:
