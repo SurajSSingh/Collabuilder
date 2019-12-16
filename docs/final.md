@@ -21,6 +21,12 @@ At a high level, we implemented a convolutional neural network that accepts a bl
 
 In particular, the neural network accepts input tensors with shape $$ (2, B, W, H, W) $$, where $$B$$ is the number of block types being used, plus one type each for “air” and “edge” (positions outside the arena), and $$ W $$ and $$ H $$ are the width and height of the observation, centered on the agent’s position. The input is a 3D array of the blocks in the world encoded categorically (four dimensions in total), and another array of the same dimension describing the “blueprint”, or desired state of the world.
 
+In order to efficiently research architectures and hyper-parameters for our agent, we developed a model-testing framework. This framework accepts a directory of configuration files, and runs the models described by those files in rounds, one lesson at a time. It automatically detects and weeds out models that fail to train correctly, and collects statistics for later analysis, to aid in selecting the highest-performing models, as depicted in the diagram below:
+
+<p align="center">
+    <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
+</p>
+
 All successful versions of our agent first applied one or more layers of convolutions, followed by fully connected layers. Using the model-testing framework we developed, we made the following comparisons:
 Convolutional layer arrangements: We tried 1-3 layers of convolution, with varying numbers of filters, with and without padding. We found that 2 layers, with 16 and 8 filters respectively, and without padding, was optimal.
 Post-convolution layer: We tried max-pooling with various stride lengths, batch-normalization, and nothing between the convolutions and fully-connected layers. We found that directly connecting the last convolution to the fully-connected layers was most effective.
@@ -106,15 +112,6 @@ Another key qualitative metric is to evaluate whether the agent behaves "reasona
 
 
 ## Remove this section but make sure nothing important isnt moved to another section
-
-So far, we have worked to develop the framework for our AI, but we need to do a lot more in order to get it to the desired level. We currently have lessons developed for curriculum learning, a simulation for fast training, and a neural network integrated with our training mechanism. Moving forward we need to leverage these resources to get our agent to perform the desired task well. Although we have gotten the agent through some of the basic lessons, we still need the agent to be able to build structures with more height. One difficult task we anticipate when getting to structures is definitely building upwards. It will take a lot of careful training to teach the agent to build tall sequences of blocks without falling off. We are hoping that a cleverly developed curriculum will allow us to teach the agent to build taller structures.
-
-Another goal is finding better configurations for our neural network that will enable the agent to build increasingly complex blueprints. We will definitely need to further research convolutional networks to gain a deeper understanding on how to optimize for our specific problem. Also, we plan to develop a model testing framework that will utilize our existing training framework in order to expedite our search for better curriculums and better architectures for the network. Because there are many places in which our system can be modified, it is difficult to say what configuration will work best. Currently, we have been manually running the training overnight, and it takes a long time to figure out what works well, and where the problems lie. We hope to automate this process by using a model tester into which we can input a list of different configurations that we want to test, and have it try them all out. Furthermore, we will take the best performers from the first couple of lessons and have them move on to the next round of lessons. Ideally, this would allow us to narrow down the best set of parameters through efficient testing that would be cumbersome to perform manually. Here is a diagram depicting how our model tester would work:
-
-
-<p align="center">
-    <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
-</p>
 
 
 As made evident by our team name “Collabuilder”, we would love to be able to introduce multiple agents into the environment and have them work together in order to build the structures. Our simulator would be all the more crucial in this setup, and it would be difficult to find the correct way to train agents simultaneously. Given time, this would be our final addition to the project.
