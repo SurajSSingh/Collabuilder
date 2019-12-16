@@ -107,6 +107,9 @@ class LivePlot:
             linestyle='--'
         )
 
+    def close(self):
+        plt.close(self._fig)
+
 class QSummary:
     """Displays a summary of important Q-values, as estimated by a model."""
     # This class draws heavily from tutorial_6 of the Malmo distribution.
@@ -169,6 +172,9 @@ class QSummary:
                         (False, False): '#441111'
                     }[(arch.optimal_action == action, positive)])
 
+    def close(self):
+        self._root.destroy()
+
 class TextDisplay:
     def __init__(self, params, title='Display'):
         '''Constructs a text display, where params is a dictionary.
@@ -193,3 +199,6 @@ Keys are labels, values are functions that generate an updated value to display.
         for fn, text_var in self._labels.values():
             text_var.set(fn())
         self._root.update()
+
+    def close(self):
+        self._root.destroy()

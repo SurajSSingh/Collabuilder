@@ -4,6 +4,8 @@ import json
 from collections import namedtuple
 from run_mission import Mission
 from utils import CHECKPOINT_DIR, pick_file
+import blueprint_generator
+import blueprint_generator_2
 
 Lesson = namedtuple('Lesson', [
         'name',
@@ -15,7 +17,7 @@ Lesson = namedtuple('Lesson', [
     ])
 
 class Curriculum:
-    def __init__(self, cfg, name, load_file=None):
+    def __init__(self, cfg, name, load_file=None, auto_latest=False):
         '''Create a Curriculum based on given config.
 If load_file is a valid file path, read from that save file instead.
 If load_file is None, look for save files with correct name, and ask user to load from those.
@@ -48,12 +50,12 @@ If load_file is False, do not look for save files.'''
             pick_file(CHECKPOINT_DIR + self._name + '*.json',
                 prompt=f'Choose curriculum checkpoint for {self._name}',
                 none_prompt=f'Do not load curriculum checkpoint for {self._name}.',
-                failure_prompt=f'No curriculum checkpoint for {self._name}.')
+                failure_prompt=f'No curriculum checkpoint for {self._name}.',
+                auto_latest=auto_latest)
             )
         if save_fp is None:
-            # Start off before the first lesson, to correctly trigger model resetting for the first lesson
-            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=True)
-            self._current_level   = -1
+            self._successes       = np.full(cfg('curriculum', 'observation_period'), fill_value=False)
+            self._current_level   = 0
             self._current_episode = 0
         else:
             with open(save_fp) as f:
@@ -83,6 +85,13 @@ If load_file is False, do not look for save files.'''
         '''Episode number for this lesson only.'''
         return self._current_episode
 
+    def max_episodes(self):
+        '''Max episodes for this lesson. 0 if curriculum is complete.'''
+        if self._current_level < len(self._lessons):
+            return self._lessons[self._current_level].max_episodes
+        else:
+            return 0
+
     def pass_rate(self):
         '''Returns the fraction of lessons passed in the most recent observation period.'''
         return self._successes.mean()
@@ -96,12 +105,14 @@ If load_file is False, do not look for save files.'''
             self._episode_summary.append(self._current_episode)
             self._current_episode = 0
             self._successes.fill(False)
-            if model_reset_callback is not None:
-                if (self._current_level < len(self._lessons) and
-                    self._lessons[self._current_level].set_learning_schedule):
-                    model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
-                else:
-                    model_reset_callback()
+
+        # call the reset on start of any lesson, including the first
+        if self._current_episode == 0 and model_reset_callback is not None:
+            if (self._current_level < len(self._lessons) and
+                self._lessons[self._current_level].set_learning_schedule):
+                model_reset_callback(num_episodes=self._lessons[self._current_level].max_episodes)
+            else:
+                model_reset_callback()
 
         if ((max_lesson is not None and self._current_level > max_lesson) or
             (self._current_level >= len(self._lessons)) or
@@ -126,7 +137,7 @@ If load_file is False, do not look for save files.'''
 
     def get_demo_mission(self):
         # Return a mission without treating this as training, don't ask for or record rewards
-        level = max(self._current_level, len(self._lessons) - 1)
+        level = min(self._current_level, len(self._lessons) - 1)
         bp, start_pos, _ = self._lessons[level].function(
                 arena_width  = self._arena_width,
                 arena_height = self._arena_height,
@@ -134,7 +145,7 @@ If load_file is False, do not look for save files.'''
                 **self._lessons[level].params
             )
 
-        max_episode_time = self._lessons[self._current_level].max_episode_time
+        max_episode_time = self._lessons[level].max_episode_time
         return (bp, start_pos, max_episode_time)
 
 def _get_lesson_function(name):
@@ -159,7 +170,7 @@ def _get_lesson_function(name):
         return lessonA
     elif name == 'lessonB':
         return lessonB
-    elif name in ['lessonC','lessonD','lessonE','lessonF','lessonG']:
+    elif name in ['lessonC','lessonD','lessonE','lessonF','lessonG','lessonMB']:
         return lessonMB
     elif name == 'in_front':
         return just_in_front_lesson
@@ -167,6 +178,10 @@ def _get_lesson_function(name):
         return turn_lesson
     elif name == 'approach':
         return approach_lesson
+    elif name == 'foundation':
+        return foundation_lesson
+    elif name == 'full':
+        return full_lesson
     # Final case, if nothing matches
     raise ValueError("'{}' is not a recognized function.".format(name))
 
@@ -197,7 +212,7 @@ def lessonA(arena_width, arena_height, arena_length, **kwargs):
     center_x = arena_width//2
     center_z = arena_length//2
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
-    bp[np.random.randint(low=0+k,high=arena_width-k+1)][0][np.random.randint(low=0+k,high=arena_length-k+1)] = 'stone'
+    bp[center_x+np.random.randint(low=-k,high=k)][0][center_z+np.random.randint(low=-k,high=k)] = 'stone'
     return (bp, (center_x, 0, center_z), MAX_REWARD-BUFFER)
 
 def lessonB(arena_width, arena_height, arena_length, **kwargs):
@@ -315,8 +330,9 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
     bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
 
     # Randomize start
-    start_x = np.random.randint(0,arena_width)
-    start_z = np.random.randint(0,arena_length)
+    centrize = kwargs['centerize'] if 'centerize' in kwargs else 0
+    start_x = np.random.randint(0+centrize,arena_width-centrize)
+    start_z = np.random.randint(0+centrize,arena_length-centrize)
 
     # Get number of blocks and initalize x and z sums
     number_of_block = kwargs['n_blocks'] if 'n_blocks' in kwargs else 5
@@ -342,6 +358,7 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
             x_sum += (abs(start_x - pos[0])-1)
             z_sum += (abs(start_z - pos[1])-1)
 
+    tower_positions = None
     # Add height to blueprint if required
     if positions != None and 'tower' in kwargs:
         mx_h = kwargs['max_height'] if 'max_height' in kwargs else arena_height
@@ -351,15 +368,21 @@ def lessonMB(arena_width, arena_height, arena_length, **kwargs):
         for pos in tower_positions:
             bp[pos[0]][pos[1]][pos[2]] = 'stone'
 
-    # Find most optimal route
-    # Currently hardcoded cost
-    movement_cost = 0.01
-    placement_cost = 1
-    optimum = 1#((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
+    if 'target_reward' in kwargs:
+        buff_opt = kwargs['target_reward']
+    else:
+        # Find most optimal route
+        # Currently hardcoded cost
+        movement_cost = 0.01
+        placement_cost = 1
+        optimum = (
+            kwargs['target_reward_per_block'] * len(positions if tower_positions is None else tower_positions)
+            if 'target_reward_per_block' in kwargs else
+            1) #((x_sum*movement_cost) - (x_sum//movement_cost)) + ((z_sum*movement_cost) - (z_sum//movement_cost)) + (number_of_block*placement_cost)
 
-    # Allow near optimal buffer
-    buff = 'buff' if 'buff' in kwargs else 0.5
-    buff_opt = optimum - buff
+        # Allow near optimal buffer
+        buff = 'buff' if 'buff' in kwargs else 0.5
+        buff_opt = optimum - buff
 
     # Debug Print Statements
     if 'debug' in kwargs:
@@ -414,3 +437,49 @@ def approach_lesson(arena_width, arena_height, arena_length, max_distance=2, tar
     distance = np.random.randint(1, max_distance+1)
 
     return (bp, (block_x, block_y, block_z - distance), target_reward)
+
+def foundation_lesson(arena_width, arena_height, arena_length, **kwargs):
+    bp_arr = blueprint_generator.generate_1d_blueprint(arena_length, arena_width, arena_height)
+    block_count = 0
+    for layer in bp_arr:
+        for row in layer:
+            for v,val in enumerate(row):
+                if val == 0:
+                    row[v] = 'air'
+                else:
+                    row[v] = 'stone'
+                    block_count += 1
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    for w in range(arena_width):
+        for h in range(arena_height):
+            for l in range(arena_length):
+                bp[w,h,l] = bp_arr[h][l][w]
+    start_x = 0#np.random.randint(arena_width)
+    start_y = 0#np.random.randint(arena_length)
+    if 'block_weight' in kwargs:
+        target_reward = block_count*kwargs[block_weight]
+    else:
+        target_reward = block_count
+    buffer_factor = 0.8
+    return (bp, (start_x,0,start_y), target_reward*buffer_factor)
+
+def full_lesson(arena_width, arena_height, arena_length, **kwargs):
+    length_margin = kwargs.get('length_margin', 0)
+    width_margin  = kwargs.get('width_margin',  0)
+    height_margin = kwargs.get('height_margin', 0)
+    bp_arr = blueprint_generator_2.generate_blueprint(
+            arena_length - 2*length_margin,
+            arena_width  - 2*width_margin,
+            arena_height - height_margin)
+    bp = np.full((arena_width, arena_height, arena_length), fill_value='air', dtype='<U8')
+    bp[np.pad(bp_arr.transpose((2, 0, 1)),
+        ((width_margin, width_margin),
+         (0, height_margin),
+         (length_margin, length_margin)),
+        constant_values=False)] = 'stone'
+    block_count = bp_arr.sum()
+    start_x = 0#np.random.randint(arena_width)
+    start_y = 0#np.random.randint(arena_length)
+    target_reward = block_count*kwargs.get('block_weight', 1)
+    buffer_factor = kwargs.get('buffer_factor', 0.8)
+    return (bp, (start_x,0,start_y), target_reward*buffer_factor)
