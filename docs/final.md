@@ -28,6 +28,14 @@ In order to efficiently research architectures and hyper-parameters for our agen
     <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
 </p>
 
+As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
+
+As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
+
+<p align="center">
+    <img src="https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY" width="500" height="425" title="Simulation Display">
+</p>
+
 All successful versions of our agent first applied one or more convolutional layers, followed by fully connected layers. Using the model-testing framework we developed, we made the following comparisons:
 
 * Full-world vs. agent-centric observations: We tried giving the agent the entire world as an observation, with a special "block" type for the agent's location, versus giving the agent a fixed-size observation centered on the agent's location, without explicitly marking the agent's location. The latter trained more reliably and robustly.
@@ -56,28 +64,18 @@ Since the task of building structures requires a complex sequence of actions to 
 2. Full blueprint, 2 levels deep
 3. Full blueprint, 4 levels deep
 
+<p align="center">
+    <img src="https://drive.google.com/uc?id=1UahCSf5-Ux2w2pnI2VGs3HauC9SeD8qV" width="600" height="400" title="Curriculum">
+</p>
+
 It should be noted that the full blueprints are generated randomly, so the agent is not being trained on a single, fixed blueprint, but rather is expected to construct any blueprint given to it. Due to time constraints, however, we were unable to fully train a model on the full arena size using this curriculum. The resutls of our partially trained model are summarized below.
-
-<p align="center">
-    <img src="TODO" width="600" height="336" title="Curriculum">
-</p>
-
-
-As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
-
-As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
-
-
-<p align="center">
-    <img src="https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY" width="500" height="425" title="Simulation Display">
-</p>
 
 One option of improvement we had after the status report was to change the architecture of the model to support a dueling DDQN structure. The main difference with this and our current model (regular Double DQN) was that there would be a separation calculation of the state of the agent and the actions it could take in that state. This separation would then be merged back as state reward plus the advantage (we calculated as each action’s reward minus the total average reward of all actions). 
 <p align="center">
     <img src="TODO" width="600" height="372" title="Dueling Equation">
 </p>
 
-What this means for us is that the model would learn which states are considered good (e.g. in front of a block to place) and which actions are considered good (e.g. place block) independently. We predict that this would make the training much smoother with little trade-off in time (as the underlying convolution architecture remains the same). In practice, the Dueling DDQN model did performs much better than the plain DDQN in terms of accuracy of blocks and mission time, but it did take longer to learn up to the DDQN. The model was also able to complete more complex lessons in the curriculum, which means that it was able to generalize much more efficiently than the other model.
+What this means for us is that the model would learn which states are considered good (e.g. in front of a block to place) and which actions are considered good (e.g. place block) independently. We predict that this would make the training much smoother with little trade-off in time (as the underlying convolution architecture remains the same). In practice, the Dueling DDQN model performed better than the plain DDQN in terms of accuracy of blocks and mission time at small scale, but it did take longer to learn up to the DDQN. We believe it was able to generalize more efficiently than the other model, but due to the longer training time, were unable to test this hypothesis on full-scale blueprints.
 
 Lastly we built a simpler agent that used traditional techniques to construct the blueprint. The logic for this agent is as follows:
 
