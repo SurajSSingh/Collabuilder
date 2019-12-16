@@ -65,7 +65,7 @@ Since the task of building structures requires a complex sequence of actions to 
 3. Full blueprint, 4 levels deep
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1UahCSf5-Ux2w2pnI2VGs3HauC9SeD8qV" width="600" height="200" title="Curriculum">
+    <img src="https://drive.google.com/uc?id=1XkKV3WBpljPqNewBxbwl1lMOB3PTjxNd" width="600" height="200" title="Curriculum">
 </p>
 
 It should be noted that the full blueprints are generated randomly, so the agent is not being trained on a single, fixed blueprint, but rather is expected to construct any blueprint given to it. Due to time constraints, however, we were unable to fully train a model on the full arena size using this curriculum. The resutls of our partially trained model are summarized below.
