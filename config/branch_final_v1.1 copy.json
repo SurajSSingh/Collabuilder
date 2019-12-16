@@ -27,7 +27,7 @@
               "M:keras.layers.Lambda(lambda x: x[1]-K.mean(x[1])+x[0], ({num_actions},), name='policy')"
             ]
         ],
-        "target_update":10,
+        "target_update":5,
         "auto_final_layer": false,
         "use_full_observation": false,
         "observation_width": 7,
@@ -38,10 +38,10 @@
     },
     "training": {
         "start_episode":0,
-        "num_episodes": 1500,
+        "num_episodes": 500,
         "save_frequency": 5,
-        "max_episode_time": 22,
-        "initial_epsilon": 0.8,
+        "max_episode_time": 20,
+        "initial_epsilon": 0.75,
         "final_epsilon": 0.005,
         "overclock_factor": 5,
         "save_history": false,
@@ -54,9 +54,9 @@
         "reward_weight": {
             "base": -0.005,
             "distance": 0.002,
-            "facing_incomplete": 0.0022,
+            "facing_incomplete": 0.002,
             "place_necessary": 2,
-            "place_superfluous": -0.15,
+            "place_superfluous": -0.1,
             "attack_floor": -1,
             "leave_arena": -1,
             "mission_complete": 5
@@ -64,7 +64,7 @@
     },
     "curriculum": {
         "observation_period": 25,
-        "max_lesson_length": 1000,
+        "max_lesson_length": 100,
         "lessons": [
             {
                 "name": "lessonMB",
@@ -113,11 +113,24 @@
                     "length_margin": 3,
                     "width_margin": 3,
                     "height_margin": 2,
-                    "block_weight": 2,
-                    "buffer_factor": 0.85
+                    "block_weight": 1.7,
+                    "buffer_factor": 0.8
                 },
-                "max_episodes": 10000,
-                "max_episode_time": 25,
+                "max_episodes": 8000,
+                "max_episode_time": 20,
+                "set_learning_schedule": true
+            },
+            {
+                "name": "full",
+                "params": {
+                    "length_margin": 1,
+                    "width_margin": 1,
+                    "height_margin": 1,
+                    "block_weight": 1.5,
+                    "buffer_factor": 0.8
+                },
+                "max_episodes": 8000,
+                "max_episode_time": 60,
                 "set_learning_schedule": true
             }
         ]

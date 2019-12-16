@@ -265,6 +265,6 @@ class WorldModel:
             #   This also penalizes removing necessary blocks, and rewards removing superfluous ones
             #   That second function avoids being able to place the same block over and over to rack up rewards
             (  self._reward_weight['place_necessary'] * (self.num_complete() - self._old_num_complete) ) +
-            (  self._reward_weight['place_superfluous'] * exp((self.num_superfluous() - self._old_num_superfluous) - 1.5) )
+            (  self._reward_weight['place_superfluous'] * (self.num_superfluous() - self._old_num_superfluous))
             )
         return reward

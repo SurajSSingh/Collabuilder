@@ -79,7 +79,7 @@ If load_file is False, doesn't search for checkpoints.'''
         self._actions = cfg('actions')
         self._history_file = 'history/{}.npz'.format(self._name)
         self._unsaved_history = {'observation': [], 'action': [], 'reward': [], 'next_observation': []}
-        self.start_episode = 0
+        self.start_episode = cfg('training', 'start_episode', default=0)
         self._prediction_network = None
         self._target_network = None
         self._build_model(load_file, auto_latest=auto_latest)
