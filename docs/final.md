@@ -4,10 +4,10 @@ title:  Final Report
 ---
 ## Video:
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/LxQhP_pT-Ek" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
-## Project Summary: 
+## Project Summary:
 
 Our project is to train a Minecraft agent to be able to build 3-dimensional structures based on a blueprint that is input as a 3-dimensional array of block types. We trained the agent using a neural network and reinforcement learning, built using the Keras library. We also used curriculum learning to allow the agent to be trained more efficiently and effectively. We evaluated the agent based on its completeness, accuracy, and efficiency in building the blueprint. Initially we had hoped that the agent would be able to construct ceilings for the buildings, but our current action space makes this near impossible, so we removed this goal. We had also hoped to implement multiple agents, but were forced to remove this goal due to time constraints and the difficulty of getting a single agent to perform well.
 
@@ -73,12 +73,13 @@ Since the task of building structures requires a complex sequence of actions to 
 
 It should be noted that the full blueprints are generated randomly, so the agent is not being trained on a single, fixed blueprint, but rather is expected to construct any blueprint given to it. Due to time constraints, however, we were unable to fully train a model on the full arena size using this curriculum. The resutls of our partially trained model are summarized below.
 
-One option of improvement we had after the status report was to change the architecture of the model to support a dueling DDQN structure. The main difference with this and our current model (regular Double DQN) was that there would be a separate calculation of the state of the agent and the actions it could take in that state. This separation would then be merged back as state reward plus the advantage (we calculated as each action’s reward minus the total average reward of all actions). 
+After the status report, one option of improvement we considered was to change the architecture of the model to support a dueling DDQN structure. The main difference with this and our current model (regular Double DQN) was that there would be a separate calculation of the state of the agent and the actions it could take in that state. This separation would then be merged back as state reward plus the advantage (we calculated as each action’s reward minus the total average reward of all actions).
 <p align="center">
-    <img src="TODO" width="600" height="372" title="Dueling Equation">
+    <img src="https://drive.google.com/open?id=1EaZ8JZM3MEkk60QrOWjYzSJ5Xe9S4brq" width="600" height="372" title="Dueling Equation">
 </p>
+The equation here means as follows: V(s) is the value of the state, A(s,a) is the value of the action advantage (how good is the best action) at a given state and A(s,a') is the action advantage for all actions a'.
+What Dueling DQN means for us is that the model would learn which states are considered good (e.g. in front of a block to place) and which actions are considered good (e.g. place block) independently. We predict that this would make the training much smoother with little trade-off in time (as the underlying convolution architecture remains the same). In practice, the Dueling DDQN model did perform much better than the plain DDQN in terms of accuracy of blocks and mission time, but it did take longer to learn up to the DDQN. The model was also able to much more easily handle complex lessons in the curriculum, which means that it was able to generalize much more efficiently than the other model. With more time to tweak the setting, we may have fully switched over to Dueling DQN.
 
-What this means for us is that the model would learn which states are considered good (e.g. in front of a block to place) and which actions are considered good (e.g. place block) independently. We predict that this would make the training smoother with little trade-off in time (as the underlying convolution architecture remains the same). In practice, the Dueling DDQN model performed better than the plain DDQN in terms of accuracy of blocks and mission time at small scale, but it did take longer to train up than the DDQN. We believe it was able to generalize more efficiently than the other model, but due to the longer training time, we were unable to test this hypothesis on full-scale blueprints.
 
 Lastly we built a simpler agent that used traditional techniques to construct the blueprint. This agent worked perfectly and efficiently, but required us to write code for all cases, which is far more difficult to scale if we wanted to add new features to the blueprints. The logic for this agent is as follows:
 
@@ -89,7 +90,7 @@ Lastly we built a simpler agent that used traditional techniques to construct th
         remove block from unplaced_blocks
 
 
-## Evaluation: 
+## Evaluation:
 
 ### Quantitative
 Due to the excessive (>24 hour) training time, we were unable to test a fully trained agent. The metrics reported below are for the partially trained version of our best agent, which had completed the first lesson, and was approximately halfway through the second lesson, of its curriculum.
