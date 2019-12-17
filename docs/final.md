@@ -75,7 +75,7 @@ It should be noted that the full blueprints are generated randomly, so the agent
 
 After the status report, one option of improvement we considered was to change the architecture of the model to support a dueling DDQN structure. The main difference with this and our current model (regular Double DQN) was that there would be a separate calculation of the state of the agent and the actions it could take in that state. This separation would then be merged back as state reward plus the advantage (we calculated as each action’s reward minus the total average reward of all actions).
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1EaZ8JZM3MEkk60QrOWjYzSJ5Xe9S4brq" width="600" height="372" title="Dueling Equation">
+    <img src="https://drive.google.com/uc?id=1EaZ8JZM3MEkk60QrOWjYzSJ5Xe9S4brq" width="372" height="600" title="Dueling Equation">
 </p>
 The equation here means as follows: V(s) is the value of the state, A(s,a) is the value of the action advantage (how good is the best action) at a given state and A(s,a') is the action advantage for all actions a'.  
 
