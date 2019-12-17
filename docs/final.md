@@ -77,7 +77,8 @@ After the status report, one option of improvement we considered was to change t
 <p align="center">
     <img src="https://drive.google.com/open?id=1EaZ8JZM3MEkk60QrOWjYzSJ5Xe9S4brq" width="600" height="372" title="Dueling Equation">
 </p>
-The equation here means as follows: V(s) is the value of the state, A(s,a) is the value of the action advantage (how good is the best action) at a given state and A(s,a') is the action advantage for all actions a'.
+The equation here means as follows: V(s) is the value of the state, A(s,a) is the value of the action advantage (how good is the best action) at a given state and A(s,a') is the action advantage for all actions a'.  
+
 What Dueling DQN means for us is that the model would learn which states are considered good (e.g. in front of a block to place) and which actions are considered good (e.g. place block) independently. We predict that this would make the training much smoother with little trade-off in time (as the underlying convolution architecture remains the same). In practice, the Dueling DDQN model did perform much better than the plain DDQN in terms of accuracy of blocks and mission time, but it did take longer to learn up to the DDQN. The model was also able to much more easily handle complex lessons in the curriculum, which means that it was able to generalize much more efficiently than the other model. With more time to tweak the setting, we may have fully switched over to Dueling DQN.
 
 
