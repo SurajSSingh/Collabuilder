@@ -4,7 +4,7 @@ title:  Final Report
 ---
 ## Video:
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/GaYuywb3P00" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
 ## Project Summary:
@@ -136,5 +136,7 @@ Overall, we consider this to be a moderately successful project. While the basel
 Keras is used for our neural network model, with Tensorflow as its backend. The Minecraft simulator relies heavily on Numpy. Plotting and displays use Matplotlib.
 
 The paper “A Guide to Convolution Arithmetic for Deep Learning.” by Dumoulin and Visin gave us some practical explanation of convolutional layers. In particular, this paper explains how convolutional layers change the shape of their input tensors.
+
+The github page https://yilundu.github.io/2016/12/24/Deep-Q-Learning-on-Space-Invaders.html by Yilun Du was instrumental in getting the Dueling DQN working.
 
 Documentation pages for all the packages mentioned here were crucial, as were the tutorials for Malmo. More general help like StackOverflow posts on relevant questions were also very helpful, but are too numerous to list here, and no one of them was important enough to deserve an individual callout. Finally, the Towards Data Science series on Medium.com was often helpful in understanding the CNN & RL topics that we were unfamiliar with.
