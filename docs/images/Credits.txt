@@ -1,0 +1,6 @@
+Credit for where I got these images:
+  * CNN_Example: https://www.youtube.com/watch?v=vXj4z_Vo8G0
+  * Simple_House: https://www.instructables.com/id/Easy-Minecraft-House/
+  * Q_Learning: https://www.analyticsvidhya.com/blog/2019/04/introduction-deep-q-learning-python/
+  * All pictures with H_ at the beginning: https://bc-gb.com/blog/8805/large-country-house-minecraft-build-tutorial/
+

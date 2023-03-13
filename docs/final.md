@@ -27,7 +27,7 @@ In particular, the neural network accepts input tensors with shape $$ (2, B, W, 
 In order to efficiently research architectures and hyper-parameters for our agent, we developed a model-testing framework. This framework accepts a directory of configuration files, and runs the models described by those files in rounds, one lesson at a time. It automatically detects and weeds out models that fail to train correctly, and collects statistics for later analysis, to aid in selecting the highest-performing models, as depicted in the diagram below:
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
+    <img src="images/Model_Tester.png" title="Model Tester">
 </p>
 
 As another way to accelerate learning, we implemented a shaped reward function, which yields large rewards for placing blocks correctly and large punishments for leaving the arena, but also yields small rewards for moving closer to where blocks are needed and for facing an incomplete block. This helps to guide behavior during the early stages of learning.
@@ -35,7 +35,7 @@ As another way to accelerate learning, we implemented a shaped reward function, 
 As a final major improvement to our training speed, we implemented a simulation of the aspects of Minecraft relevant to our project. This simulation runs many times faster than the Malmo & Minecraft stack, which enables training models with thousands of episodes in reasonable time. We also built a visualization of the agent in this simulated model. Here, the red voxel is the agent, light blue voxels are blueprinted blocks that haven't been placed, and dark blue blocks are real blocks in the world.
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY" width="500" height="425" title="Simulation Display">
+    <img src="images/big_arena.png" width="500" height="425" title="Simulation Display">
 </p>
 
 All successful versions of our agent first applied one or more convolutional layers, followed by fully connected layers. Using the model-testing framework we developed, we made the following comparisons:
@@ -68,14 +68,14 @@ Since the task of building structures requires a complex sequence of actions to 
 3. Full blueprint, 4 levels deep
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1XkKV3WBpljPqNewBxbwl1lMOB3PTjxNd" width="600" height="200" title="Curriculum">
+    <img src="images/Curriculum Plan.png" width="200" height="200" title="Curriculum">
 </p>
 
 It should be noted that the full blueprints are generated randomly, so the agent is not being trained on a single, fixed blueprint, but rather is expected to construct any blueprint given to it. Due to time constraints, however, we were unable to fully train a model on the full arena size using this curriculum. The resutls of our partially trained model are summarized below.
 
 After the status report, one option of improvement we considered was to change the architecture of the model to support a dueling DDQN structure. The main difference with this and our current model (regular Double DQN) was that there would be a separate calculation of the state of the agent and the actions it could take in that state. This separation would then be merged back as state reward plus the advantage (we calculated as each action’s reward minus the total average reward of all actions).
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1EaZ8JZM3MEkk60QrOWjYzSJ5Xe9S4brq" width="600" height="90" title="Dueling Equation">
+    <img src="images/Equation.png" width="600" height="90" title="Dueling Equation">
 </p>
 The equation here means as follows: V(s) is the value of the state, A(s,a) is the value of the action advantage (how good is the best action) at a given state and A(s,a') is the action advantage for all actions a'.  
 
@@ -101,11 +101,11 @@ Since our agent wasn’t able to completely build the full blueprint, the most i
 Closely related to this metric is the reward the agent earns per episode. This was captured during training, and is displayed below, along with the length of each episode. The dashed vertical lines denote where the agent moved from one lesson to the next. Also note that these graphs are smoothed to avoid clutter and more clearly show trends in the data.
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1hPHvgheYBfPTkmNWleribakshjy6cvMn" width="600" height="510" title="Reward Plot">
+    <img src="images/Reward-Plot.png" width="600" height="400" title="Reward Plot">
 </p>
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1Zx554Vx3tvxqeeixTAyqS-DfrNHUOOo4" width="600" height="510" title="Length Plot">
+    <img src="images/Length-Plot.png" width="600" height="400" title="Length Plot">
 </p>
 
 Observe how the agent initially receives mostly negative rewards, as it is continually punished for leaving the arena and placing superfluous blocks. Over the course of the first lesson, it slowly learns how to navigate and place blocks effectively, eventually reaching near-optimal rewards for the first lesson. The rewards drop at the start of the next lesson, primarily because the epsilon value used for epsilon-greedy action selection is reset to $$\varepsilon_0 = 0.8$$. We see a corresponding drop in the episode length at this time, as the agent randomly chooses actions that often lead to ending the mission prematurely. At around 4500 episodes, we see a sharp increase in the rewards received for the second lesson, as well as a levelling off of episode length near the 30 second maximum length. This is when the agent first becomes effective at placing blocks in a multi-level blueprint, and the steady increase in reward thereafter is attributed to increasingly effective strategies for building, and decreasing epsilon values. At around 5500 episodes, we noticed the time limit of 30 seconds was insufficient to complete the episode, even with optimal behavior, and that the agent nearly always times out, showing that it is exploiting the available time to its fullest capacity. To remedy this, and because we didn’t have time to retrain an agent from scratch, we built a new lesson using the same two-level blueprints, but with a much higher (5 minute) time limit, and manually moved the agent on to this new lesson. Once again, the reset in epsilon caused a sharp decrease in reward and episode length. However, the agent soon exploits the longer episode time, as we see the episode length sharply exceed the previous maximum, and use the behaviors it learned in previous lessons to place large amounts of the blueprint. We expect that further training would continue the upward trend in the reward graph, and would reduce the variance seen in this later stage. Based on prior testing, we also expect that sufficient training would eventually decrease the episode lengths slightly, as the agent optimizes its behavior for speed.
@@ -115,7 +115,7 @@ Observe how the agent initially receives mostly negative rewards, as it is conti
 In our status report, we mentioned that the complexity of blueprints was a key qualitative metric of our agent’s ability. Since our agent is able to construct 2-layer blueprints with moderate competency, as explained above, we have a distinct improvement from the status report, in which the agent placed only a single block, and are close to meeting the goal of a fully-sized blueprint without a roof. We expect that the current agent could meet this goal without modification, given sufficient training time. An example of the kind of blueprint our agent attempted is given below, displayed using our simulation. Notice that there is a solid foundation layer, and walls both around the exterior and throughout the interior separating various rooms in the structure.
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=19ZZOVqf_75WYjj7PZt6CZaUALnJ0nPxA" width="600" height="510" title="2-Level Blueprint">
+    <img src="images/Level-2.png" width="600" height="510" title="2-Level Blueprint">
 </p>
 
 This blueprint is close to the full goal of a “tall” (4-layer) blueprint, in which all the walls have been extended vertically, like below:

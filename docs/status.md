@@ -39,7 +39,7 @@ Since the task of building structures requires a complex sequence of actions to 
 
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1eSsZ7rtOoV9GKQz8TUFFMviB1C8So6r9" width="600" height="336" title="Curriculum">
+    <img src="images/Curriculum.png" width="600" height="336" title="Curriculum">
 </p>
 
 
@@ -49,7 +49,7 @@ As a final major improvement to our training speed, we implemented a simulation 
 
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1Soi2siAJ17UQhX666Q8JmpJEbX4WXeWY" width="500" height="425" title="Simulation Display">
+    <img src="images/small_arena.png" width="500" height="425" title="Simulation Display">
 </p>
 
 ## Evaluation: 
@@ -60,7 +60,7 @@ At this stage, the most important evaluation metric is the progress the agent ha
 
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=16YhjvOQxChReyeVbsRbH_q8q8Bwsb2Jz" width="600" height="372" title="Reward Plot">
+    <img src="images/status_reward.png" width="600" height="372" title="Reward Plot">
 </p>
 
 
@@ -74,25 +74,25 @@ The complexity of the blueprints that our agent is able to build is another key 
 
 A 2D blueprint with a single block placed within n(2 below) units of the agent, with a set starting position:
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1OZe2Qq79Qrq9IaO5ksBpvS3ox-u2bdtx" width="345" height="350" title="CL1">
+    <img src="images/small_arena.png" width="345" height="350" title="CL1">
 </p>
 
 
 A 2D blueprint with k(9 below) random blocks placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1J40kuVpqqPPE4rUO5Lqcbik1l7by_B2W" width="345" height="350" title="CL2">
+    <img src="images/CL2.png" width="345" height="350" title="CL2">
 </p>
 
 
 A 2D blueprint with k(5 below) organized structures placed anywhere in the arena, and random start positions for the agent:
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1oncEF40tuY3Zww0tXV_c4_KE3jfAoHQy" width="345" height="350" title="CL3">
+    <img src="images/CL3.png" width="345" height="350" title="CL3">
 </p>
 
 
 A 3D blueprint with k(5 below) organized structure with max height 2 placed anywhere in the arena, random starts:
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1Onp5Y6SICbSmpZwDCqQ67MnKOGNuAWW-" width="345" height="350" title="CL4">
+    <img src="images/CL4.png" width="345" height="350" title="CL4">
 </p>
 
 
@@ -100,7 +100,7 @@ Another key qualitative metric is to evaluate whether the agent behaves "reasona
 
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1jJR7olROp2ESoVZ4SOTKUF1kU49CnkMM" width="400" height="304" title="Q Summary">
+    <img src="images/BackupAgentQSummary.png" width="400" height="304" title="Q Summary">
 </p>
 
 
@@ -115,7 +115,7 @@ Another goal is finding better configurations for our neural network that will e
 
 
 <p align="center">
-    <img src="https://drive.google.com/uc?id=1fm9JhoHIIjGSMxLgT5-MlX55Ld1xJnLd" title="Model Tester">
+    <img src="images/Model_Tester.png" title="Model Tester">
 </p>
 
 
